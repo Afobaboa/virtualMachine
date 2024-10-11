@@ -3,7 +3,6 @@
 
  #include "../headers/processor.h"
  #include "../stack/headers/stack.h"
- #include "../logPrinter/logPrinter.h"
 
 
 //----------------------------------------------------------------------------------------

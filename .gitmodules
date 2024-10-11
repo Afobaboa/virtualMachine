@@ -1,6 +1,3 @@
 [submodule "stack"]
 	path = stack
 	url = https://github.com/Afobaboa/stack
-[submodule "logPrinter"]
-	path = logPrinter
-	url = https://github.com/Afobaboa/logPrinter

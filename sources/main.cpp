@@ -6,6 +6,8 @@
 
 int main() 
 {
+    LOG_OPEN();
+
     command_t command = WRONG;
 
     for (;;)
@@ -17,5 +19,6 @@ int main()
         break;
     }
 
+    LOG_CLOSE();
     return 0;
 }
