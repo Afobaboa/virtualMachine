@@ -16,14 +16,15 @@
  */
 enum COMMAND_CODES
 {
-    PUSH = 1,   /**< Push elem to stack. */
+    START = 1,
+    PUSH,         /**< Push elem to stack. */
     ADD,
     SUB,
     DIV,
     MUL,
     IN,
     OUT,
-    HLT,
+    END,
     WRONG
 };
 typedef enum COMMAND_CODES command_t;

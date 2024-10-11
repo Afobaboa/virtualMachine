@@ -15,7 +15,7 @@ int main()
         command = GetCommand();
         ProсessCommand(command);
         
-        if (command == HLT)
+        if (command == END || command == WRONG)
         break;
     }
 

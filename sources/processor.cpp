@@ -8,6 +8,7 @@
 //----------------------------------------------------------------------------------------
 
 
+static void DoStart();
 static void DoPush();
 static void DoAdd();
 static void DoSub();
@@ -15,7 +16,7 @@ static void DoDiv();
 static void DoMul();
 static void DoIn();
 static void DoOut();
-static void DoHlt(); 
+static void DoEnd(); 
 
 
 //----------------------------------------------------------------------------------------
@@ -32,6 +33,9 @@ command_t GetCommand()
         ColoredPrintf(RED, "SYNTAX ERROR\n");
         return WRONG;
     }
+
+    if (strcmp(command, "START") == 0)
+        return START;
 
     if (strcmp(command, "PUSH") == 0)
         return PUSH;
@@ -54,8 +58,8 @@ command_t GetCommand()
     if (strcmp(command, "OUT") == 0)
         return OUT;
 
-    if (strcmp(command, "HLT") == 0)
-        return HLT;
+    if (strcmp(command, "END") == 0)
+        return END;
 
     ColoredPrintf(RED, "SYNTAX ERROR\n");
     return WRONG;
@@ -66,6 +70,10 @@ void ProсessCommand(command_t command)
 {
     switch(command) 
     {
+    case START:
+        DoStart();
+        break;
+
     case PUSH:
         DoPush();
         break;
@@ -94,20 +102,26 @@ void ProсessCommand(command_t command)
         DoOut();
         break;
 
-    case HLT:
-        DoHlt();
+    case END:
+        DoEnd();
         break;
 
     case WRONG:
 
     default:
         ColoredPrintf(RED, "SYNTAX ERROR\n");
-        DoHlt();
+        DoEnd();
     }
 }
 
 
 //----------------------------------------------------------------------------------------
+
+
+static void DoStart()
+{
+    ColoredPrintf(YELLOW, "START\n");
+}
 
 
 static void DoPush()
@@ -152,7 +166,7 @@ static void DoOut()
 }
 
 
-static void DoHlt()
+static void DoEnd()
 {
-    ColoredPrintf(YELLOW, "HLT\n");
+    ColoredPrintf(YELLOW, "END\n");
 }
