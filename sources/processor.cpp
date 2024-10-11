@@ -8,6 +8,34 @@
 //----------------------------------------------------------------------------------------
 
 
+#define DO_OPERATION(operation)                                 \
+    int elem = 0;                                               \
+    if (scanf("%d", &elem) <= 0)                                \
+    {                                                           \
+        ColoredPrintf(RED, "%s ERROR\n", __FUNCTION__);         \
+        return;                                                 \
+    }                                                           \
+                                                                \
+    int poppedElem = 0;                                         \
+    if (StackPop(stack, &poppedElem) != OK)                     \
+    {                                                           \
+        ColoredPrintf(RED, "%s: POP ERROR\n", __FUNCTION__);    \
+        return;                                                 \
+    }                                                           \
+                                                                \
+    poppedElem = poppedElem operation elem;                     \
+    StackPush(stack, &poppedElem);                              
+
+
+//----------------------------------------------------------------------------------------
+
+
+static Stack* stack = NULL;
+
+
+//----------------------------------------------------------------------------------------
+
+
 static void DoStart();
 static void DoPush();
 static void DoAdd();
@@ -120,37 +148,43 @@ void ProсessCommand(command_t command)
 
 static void DoStart()
 {
-    ColoredPrintf(YELLOW, "START\n");
+    STACK_CREATE(stack, sizeof(int));
 }
-
 
 static void DoPush()
 {
-    ColoredPrintf(YELLOW, "PUSH\n");
+    int elem = 0;
+    if (scanf("%d", &elem) <= 0)
+    {
+        ColoredPrintf(RED, "PUSH ERROR\n");
+        return;
+    }
+    
+    StackPush(stack, &elem);
 }
 
 
 static void DoAdd()
 {
-    ColoredPrintf(YELLOW, "ADD\n");
+    DO_OPERATION(+);
 }
 
 
 static void DoSub()
 {
-    ColoredPrintf(YELLOW, "SUB\n");
+    DO_OPERATION(-);
 }
 
 
 static void DoDiv()
 {
-    ColoredPrintf(YELLOW, "DIV\n");
+    DO_OPERATION(/);
 }
 
 
 static void DoMul()
 {
-    ColoredPrintf(YELLOW, "MUL\n");
+    DO_OPERATION(*);
 }
 
 
@@ -162,11 +196,18 @@ static void DoIn()
 
 static void DoOut()
 {
-    ColoredPrintf(YELLOW, "OUT\n");
+    int lastElem = 0;
+    if (StackPop(stack, &lastElem) != OK)
+    {
+        ColoredPrintf(RED, "OUT: POP ERROR\n");
+        return;
+    }
+
+    printf(">%d\n", lastElem);
 }
 
 
 static void DoEnd()
 {
-    ColoredPrintf(YELLOW, "END\n");
+    StackDelete(&stack);
 }
