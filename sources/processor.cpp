@@ -52,11 +52,13 @@ static void DoEnd();
 
 command_t GetCommand()
 {
-    const size_t maxCommandSize = 10;
-    char command[maxCommandSize];
-    scanf("%s", command);
+    const size_t maxCommandLength = 10;
+    static char command[maxCommandLength + 1] = "";
+    char commandScanfFormat[10] = "";
+    sprintf(commandScanfFormat, "%%%zus", maxCommandLength);
+    scanf(commandScanfFormat, command);
 
-    if (command[maxCommandSize - 1] != '\0')
+    if (command[maxCommandLength - 1] != '\0')
     {
         ColoredPrintf(RED, "SYNTAX ERROR\n");
         return WRONG;

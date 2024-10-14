@@ -8,7 +8,7 @@ DEBUG_FLAGS=-D _DEBUG -ggdb3 -std=c++17 -O0 -Wall $\
 -Wc++14-compat -Wmissing-declarations -Wcast-align $\
 -Wcast-qual -Wchar-subscripts -Wconditionally-supported $\
 -Wconversion -Wctor-dtor-privacy -Wempty-body -Wfloat-equal $\
--Wformat-nonliteral -Wformat-security -Wformat-signedness $\
+-Wformat-security -Wformat-signedness $\
 -Wformat=2 -Winline -Wlogical-op -Wnon-virtual-dtor $\
 -Wopenmp-simd -Woverloaded-virtual -Wpacked -Wpointer-arith $\
 -Winit-self -Wredundant-decls -Wshadow -Wsign-conversion $\
@@ -49,7 +49,7 @@ objects_dir:
 
 # Clean objects dir
 clean:
-	@rm -f $(OBJECTS_DIR)/*.o
+	@rm -f $(OBJECTS_DIR)/*.o $(EXECUTABLE)
 
 
 #-----------------------------------------------------------------------------------------
@@ -102,15 +102,15 @@ $(OBJECTS_DIR)/%.o: $(STACK_SOURCE_DIR)/%.cpp $(STACK_HEADERS) $(LOG_HEADERS)
 VM_SOURCE_DIR=sources
 VM_HEADER_DIR=headers
 
-VM_SOURCE_FILES=processor.cpp
-VM_HEADER_FILES=processor.h
+VM_SOURCE_FILES=processor.cpp assembler.cpp
+VM_HEADER_FILES=processor.h	assembler.h
 
 VM_SOURCES=$(patsubst %.cpp,$(VM_SOURCE_DIR)/%.cpp,$(VM_SOURCE_FILES))
 VM_HEADERS=$(patsubst %.h,$(VM_HEADER_DIR)/%.h,$(VM_HEADER_FILES))
 VM_OBJECTS=$(patsubst %.cpp,$(OBJECTS_DIR)/%.o,$(VM_SOURCE_FILES)) 
 
 
-$(OBJECTS_DIR)/%.o: $(VM_SOURCE_DIR)/%.cpp $(VM_HEADERS) $(STACK_HEADERS) $(LOG_HEADERS) 
+$(OBJECTS_DIR)/%.o: $(VM_SOURCE_DIR)/%.cpp $(VM_HEADERS) $(STACK_HEADERS) $(LOG_HEADERS)
 	@$(CC) -c $(DEBUG_FLAGS) $< -o $@
 
 
@@ -119,9 +119,6 @@ $(OBJECTS_DIR)/%.o: $(VM_SOURCE_DIR)/%.cpp $(VM_HEADERS) $(STACK_HEADERS) $(LOG_
 
 MAIN_SOURCE=$(VM_SOURCE_DIR)/main.cpp
 MAIN_OBJECT=$(patsubst $(VM_SOURCE_DIR)/%.cpp, $(OBJECTS_DIR)/%.o, $(MAIN_SOURCE))
-$(MAIN_OBJECT): $(MAIN_SOURCE) $(VM_HEADERS) $(STACK_HEADERS) $(LOG_HEADERS)
-	@$(CC) -c $(DEBUG_FLAGS) $< -o $@
-
 
 EXECUTABLE=virtualMachine
 
@@ -130,7 +127,7 @@ EXECUTABLE=virtualMachine
 all: release
 
 
-# Run program
+# Run program`
 run: $(EXECUTABLE)
 	@./$<
 
@@ -142,11 +139,11 @@ release: objects_dir clean
 
 
 # Make debug version
-debug: $(MAIN_OBJECT) $(VM_OBJECTS) $(STACK_OBJECTS) $(STACK_HEADERS) $\
+debug: objects_dir $(MAIN_OBJECT) $(VM_OBJECTS) $(STACK_OBJECTS) $(STACK_HEADERS) $\
 													$(LOG_OBJECTS) $(LOG_HEADERS)
 	@$(CC) $(DEBUG_FLAGS) $(MAIN_OBJECT) $(VM_OBJECTS) $(STACK_OBJECTS) $(LOG_OBJECTS) \
 																		-o $(EXECUTABLE)
 
 
 print:
-	echo $(VM_OBJECTS)
+	echo $(MAIN_OBJECT)

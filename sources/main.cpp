@@ -1,3 +1,4 @@
+#include "../headers/assembler.h"
 #include "../headers/processor.h"
 
 
@@ -8,16 +9,19 @@ int main()
 {
     LOG_OPEN();
 
-    command_t command = WRONG;
+    // command_t command = WRONG;
 
-    for (;;)
-    {
-        command = GetCommand();
-        ProсessCommand(command);
+    // for (;;)
+    // {
+    //     command = GetCommand();
+    //     ColoredPrintf(WHITE, "%d\n", command);
+    //     ProсessCommand(command);
         
-        if (command == END || command == WRONG)
-        break;
-    }
+    //     if (command == END || command == WRONG)
+    //     break;
+    // }
+
+    Assemble("test.asm");
 
     LOG_CLOSE();
     return 0;
