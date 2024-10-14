@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "../headers/assembler.h"
@@ -35,12 +36,18 @@ bool Assemble(const char* fileName)
     FILE* fileToAsseble = fopen(fileName, "r");
     if (fileToAsseble == NULL)
     {
-        ColoredPrintf(RED, "%s can't open file. Try to change rights with chmod.\n");
+        ColoredPrintf(RED, "Can't open file. Check if file exists.\n");
         return false;
     }
 
     const size_t nameLength = strlen(fileName);
-    char assembledFileName[nameLength] = {};
+    char* assembledFileName = (char*) calloc(nameLength + 1, sizeof(char));
+    if (assembledFileName == NULL)
+    {
+        ColoredPrintf(RED, "Can't allocate memory for object file name.");
+        fclose(fileToAsseble);
+        return false;
+    }
     memmove(assembledFileName, fileName, nameLength);
     SetObjectFileExtension(assembledFileName);
     FILE* assembledFile = fopen(assembledFileName, "w");
@@ -48,6 +55,7 @@ bool Assemble(const char* fileName)
     {
         ColoredPrintf(RED, "Can't create object file.\n");
         fclose(fileToAsseble);
+        free(assembledFileName);
         return false;
     }
 
@@ -55,6 +63,7 @@ bool Assemble(const char* fileName)
 
     fclose(fileToAsseble);
     fclose(assembledFile);
+    free(assembledFileName);
     return true;
 }
 
@@ -71,7 +80,7 @@ static bool CheckAsmFileExtension(const char* fileName)
     if (nameLength <= extensionLength)
         return false;
 
-    if (strcmp(fileName - extensionLength - 1, extension) != 0)
+    if (strcmp(fileName + nameLength - extensionLength, extension) != 0)
         return false;
 
     return true;
@@ -87,7 +96,7 @@ static void SetObjectFileExtension(char* fileName)
     const size_t newExtencionLength  = strlen(newExtencion);
     const size_t nameLength          = strlen(fileName);
     
-    memmove(fileName + nameLength - prevExtencionLength - 1, 
+    memmove(fileName + nameLength - prevExtencionLength, 
             newExtencion, 
-            newExtencionLength);
+            newExtencionLength + 1);
 }
