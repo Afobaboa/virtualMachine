@@ -10,6 +10,18 @@
 //----------------------------------------------------------------------------------------
 
 
+enum COMMAND_GET_STATUS
+{
+    OK,
+    NO_CMD,
+    WRONG_CMD
+};
+typedef enum COMMAND_GET_STATUS cmdGetStatus_t;
+
+
+//----------------------------------------------------------------------------------------
+
+
 static bool CheckAsmFileExtension(const char* fileName);
 
 
@@ -17,6 +29,15 @@ static void SetObjectFileExtension(char* fileName);
 
 
 static bool AssembleCommands(FILE* fileToAssemble, FILE* assembledFile);
+
+
+static cmdGetStatus_t CommandGet(FILE* fileToAssemble, command_t* commandBuffer);
+
+
+static bool CommandGetArgv(FILE* fileToAssemble, command_t cmd, int* cmdArgvBuffer);
+
+
+static bool CommandAssembledWrite(FILE* assembledFile, command_t cmd, int* cmdArgvBuffer);
 
 
 //----------------------------------------------------------------------------------------
@@ -107,6 +128,41 @@ static void SetObjectFileExtension(char* fileName)
 
 static bool AssembleCommands(FILE* fileToAssemble, FILE* assembledFile)
 {
-    fprintf(assembledFile, "Test\n");
+    command_t cmdBuffer = WRONG;
+    int cmdArgvBuffer[maxCmdArgc] = {};
+    cmdGetStatus_t cmdGetStatus = OK;
+
+    for (;;)
+    {
+        cmdGetStatus = CommandGet(fileToAssemble, &cmdBuffer);
+        if (cmdGetStatus == NO_CMD)
+            break;
+
+        if ( cmdGetStatus == WRONG_CMD ||
+            !CommandGetArgv(fileToAssemble, cmdBuffer, cmdArgvBuffer) ||
+            !CommandAssembledWrite(assembledFile, cmdBuffer, cmdArgvBuffer))
+        {
+            return false;
+        }
+    }
+
     return true;
+}
+
+
+static cmdGetStatus_t CommandGet(FILE* fileToAssemble, command_t* commandBuffer)
+{
+
+}
+
+
+static bool CommandGetArgv(FILE* fileToAssemble, command_t cmd, int* cmdArgvBuffer)
+{
+
+}
+
+
+static bool CommandAssembledWrite(FILE* assembledFile, command_t cmd, int* cmdArgvBuffer)
+{
+    
 }

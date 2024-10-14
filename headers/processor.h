@@ -30,6 +30,23 @@ enum COMMAND_CODES
 typedef enum COMMAND_CODES command_t;
 
 
+/**
+ * Arguments' count of each command of virtualMachine.
+ */
+typedef int argc_t;
+argc_t START_ARGC = 0;
+argc_t PUSH_ARGC  = 1;
+argc_t ADD_ARGC   = 0;
+argc_t SUB_ARGC   = 0;
+argc_t DIV_ARGC   = 0;
+argc_t MUL_ARGC   = 0;
+argc_t IN_ARGC    = 0;
+argc_t OUT_ARGC   = 0;
+argc_t END_ARGC   = 0;
+
+const size_t maxCmdArgc = 5;
+
+
 //----------------------------------------------------------------------------------------
 
 
