@@ -9,22 +9,17 @@
 
 
 #define DO_OPERATION(operation)                                 \
-    int elem = 0;                                               \
-    if (scanf("%d", &elem) <= 0)                                \
-    {                                                           \
-        ColoredPrintf(RED, "%s ERROR\n", __FUNCTION__);         \
-        return;                                                 \
-    }                                                           \
-                                                                \
-    int poppedElem = 0;                                         \
-    if (StackPop(stack, &poppedElem) != OK)                     \
+    int firstPoppedElem  = 0;                                   \
+    int secondPoppedElem = 0;                                   \
+    if ((StackPop(stack, &firstPoppedElem)  != OK) ||           \
+        (StackPop(stack, &secondPoppedElem) != OK))             \
     {                                                           \
         ColoredPrintf(RED, "%s: POP ERROR\n", __FUNCTION__);    \
         return;                                                 \
     }                                                           \
                                                                 \
-    poppedElem = poppedElem operation elem;                     \
-    StackPush(stack, &poppedElem);                              
+    int result = firstPoppedElem operation secondPoppedElem;    \
+    StackPush(stack, &result);                              
 
 
 //----------------------------------------------------------------------------------------

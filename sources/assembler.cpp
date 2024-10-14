@@ -90,7 +90,7 @@ static bool CheckAsmFileExtension(const char* fileName)
 static void SetObjectFileExtension(char* fileName)
 {
     const char* prevExtencion = ".asm";
-    const char* newExtencion  = ".o";
+    const char* newExtencion  = ".vm";
 
     const size_t prevExtencionLength = strlen(prevExtencion);
     const size_t newExtencionLength  = strlen(newExtencion);
