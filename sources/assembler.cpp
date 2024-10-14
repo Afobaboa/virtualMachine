@@ -16,6 +16,9 @@ static bool CheckAsmFileExtension(const char* fileName);
 static void SetObjectFileExtension(char* fileName);
 
 
+static bool AssembleCommands(FILE* fileToAssemble, FILE* assembledFile);
+
+
 //----------------------------------------------------------------------------------------
 
 
@@ -59,12 +62,12 @@ bool Assemble(const char* fileName)
         return false;
     }
 
-    fprintf(assembledFile, "Test\n");
+    bool assemblingResult = AssembleCommands(fileToAsseble, assembledFile);
 
     fclose(fileToAsseble);
     fclose(assembledFile);
     free(assembledFileName);
-    return true;
+    return assemblingResult;
 }
 
 
@@ -99,4 +102,11 @@ static void SetObjectFileExtension(char* fileName)
     memmove(fileName + nameLength - prevExtencionLength, 
             newExtencion, 
             newExtencionLength + 1);
+}
+
+
+static bool AssembleCommands(FILE* fileToAssemble, FILE* assembledFile)
+{
+    fprintf(assembledFile, "Test\n");
+    return true;
 }
