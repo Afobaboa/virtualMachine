@@ -29,6 +29,8 @@ enum COMMAND_CODES
 };
 typedef enum COMMAND_CODES command_t;
 
+const size_t maxCmdLength = 32;
+
 
 /**
  * Arguments' count of each command of virtualMachine.
@@ -44,7 +46,7 @@ argc_t IN_ARGC    = 0;
 argc_t OUT_ARGC   = 0;
 argc_t END_ARGC   = 0;
 
-const size_t maxCmdArgc = 5;
+const size_t maxCmdArgc = 4;
 
 
 //----------------------------------------------------------------------------------------

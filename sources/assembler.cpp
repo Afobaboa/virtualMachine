@@ -31,13 +31,10 @@ static void SetObjectFileExtension(char* fileName);
 static bool AssembleCommands(FILE* fileToAssemble, FILE* assembledFile);
 
 
-static cmdGetStatus_t CommandGet(FILE* fileToAssemble, command_t* commandBuffer);
+static cmdGetStatus_t CommandGet(FILE* fileToAssemble, command_t* cmd, int* cmdArgv);
 
 
-static bool CommandGetArgv(FILE* fileToAssemble, command_t cmd, int* cmdArgvBuffer);
-
-
-static bool CommandAssembledWrite(FILE* assembledFile, command_t cmd, int* cmdArgvBuffer);
+static bool CommandAssembledWrite(FILE* assembledFile, command_t cmd, int* cmdArgv);
 
 
 //----------------------------------------------------------------------------------------
@@ -134,12 +131,11 @@ static bool AssembleCommands(FILE* fileToAssemble, FILE* assembledFile)
 
     for (;;)
     {
-        cmdGetStatus = CommandGet(fileToAssemble, &cmdBuffer);
+        cmdGetStatus = CommandGet(fileToAssemble, &cmdBuffer, cmdArgvBuffer);
         if (cmdGetStatus == NO_CMD)
             break;
 
         if ( cmdGetStatus == WRONG_CMD ||
-            !CommandGetArgv(fileToAssemble, cmdBuffer, cmdArgvBuffer) ||
             !CommandAssembledWrite(assembledFile, cmdBuffer, cmdArgvBuffer))
         {
             return false;
@@ -150,19 +146,38 @@ static bool AssembleCommands(FILE* fileToAssemble, FILE* assembledFile)
 }
 
 
-static cmdGetStatus_t CommandGet(FILE* fileToAssemble, command_t* commandBuffer)
+static cmdGetStatus_t CommandGet(FILE* fileToAssemble, command_t* cmd, int* cmdArgv)
 {
+    char cmd[maxCmdLength] = {};
+    char* cmdScanfFormat = CmdScanfFormatGet();
+    if (scanf(cmdScanfFormat, cmd) == EOF)
+    {
+        free(cmdScanfFormat);
+        return NO_CMD;
+    }
+    if (CheckIfScannedCorrect(cmd))
+    {
+        ColoredPrintf(RED, "Wrong command!\n");
+        free(cmdScanfFormat);
+        return WRONG_CMD;
+    }
 
+    const size_t maxCmdLineLength = 100;
+    char cmdLine[maxCmdLineLength] = {};
+    if (fgets(cmdLine, max)
+
+    if (strcmp((const char*) cmd, "PUSH") == 0)
+    {
+        *cmd = PUSH;
+
+    }
+
+    free(cmdScanfFormat);
+    return OK;
 }
 
 
-static bool CommandGetArgv(FILE* fileToAssemble, command_t cmd, int* cmdArgvBuffer)
+static bool CommandAssembledWrite(FILE* assembledFile, command_t cmd, int* cmdArgv)
 {
 
-}
-
-
-static bool CommandAssembledWrite(FILE* assembledFile, command_t cmd, int* cmdArgvBuffer)
-{
-    
 }
