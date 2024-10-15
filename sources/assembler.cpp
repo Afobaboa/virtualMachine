@@ -11,24 +11,35 @@
 //----------------------------------------------------------------------------------------
 
 
-#define CMD_SET(CMD_NAME)                                                       \
-{                                                                               \
-    *cmdNameBuffer = CMD_NAME;                                                  \
-    char argBuffer[maxCmdLength + 1] = {};                                      \
-    for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)        \
-    {                                                                           \
-        cmdGetStatus = GetNextWord(fileToAssemble, argBuffer);                  \
-        if (cmdGetStatus != OK)                                                 \
-            return WRONG_CMD;                                                   \
-                                                                                \
-        if (!ConvertToInt(argBuffer, cmdArgvBuffer + argNum))                   \
-            return WRONG_CMD;                                                   \
-    }                                                                           \
+#define CMD_SET(CMD_NAME)                                                               \
+{                                                                                       \
+    *cmdNameBuffer = CMD_NAME;                                                          \
+    LOG_PRINT(INFO, "cmdNameBuffer = %s = %d\n", #CMD_NAME, CMD_NAME);                  \
+    char argBuffer[maxCmdLength + 1] = {};                                              \
+    for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)                \
+    {                                                                                   \
+        cmdGetStatus = GetNextWord(fileToAssemble, argBuffer);                          \
+        if (cmdGetStatus != CMD_OK)                                                     \
+        {                                                                               \
+            ColoredPrintf(RED, "Wrong arguments of command %s.\n", GET_NAME(CMD_NAME)); \
+            return cmdGetStatus;                                                        \
+        }                                                                               \
+                                                                                        \
+        LOG_PRINT(INFO, "argBuffer = <%s>\n", argBuffer);                               \
+                                                                                        \
+        if (!ConvertToInt(argBuffer, cmdArgvBuffer + argNum))                           \
+            return CMD_WRONG;                                                           \
+    }                                                                                   \
+    SkipSpaces(fileToAssemble);                                                         \
+    SkipComments(fileToAssemble);                                                       \
+                                                                                        \
+    return CMD_OK;                                                                      \
 }
 
 
 #define CMD_ASSEMBLED_WRITE(CMD_NAME)                                       \
 {                                                                           \
+    LOG_PRINT(INFO, "cmdName = %s\n", #CMD_NAME);                           \
     fprintf(assembledFile, "%d ", CMD_NAME);                                \
     for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
     {                                                                       \
@@ -42,11 +53,17 @@
 
 enum COMMAND_GET_STATUS
 {
-    OK,
-    NO_CMD,
-    WRONG_CMD
+    CMD_OK,
+    CMD_NO,
+    CMD_WRONG
 };
 typedef enum COMMAND_GET_STATUS cmdGetStatus_t;
+
+
+//----------------------------------------------------------------------------------------
+
+
+// static size_t lineNum = 0;
 
 
 //----------------------------------------------------------------------------------------
@@ -71,19 +88,34 @@ static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* cmdNameBuffer);
 static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmd, int* cmdArgv);
 
 
-bool IsSpace(char symbol);
+static bool IsSpace(char symbol);
 
 
-bool IsCommentSymbol(char symbol);
+static bool IsCommentSymbol(char symbol);
 
 
-void SkipSpaces(FILE* file);
+static void SkipSpaces(FILE* file);
 
 
-void SkipComments(FILE* file);
+static void SkipComments(FILE* file);
 
 
-bool ConvertToInt(char* string, int* intBuffer);
+static bool ConvertToInt(char* string, int* intBuffer);
+
+
+static const char* CmdGetStatusName(cmdGetStatus_t cmdGetStatus);
+
+
+static bool CopyFileWithHeaderInfo(FILE* fileFrom, FILE* fileTo);
+
+
+static void MarkFileAsBeated(FILE* file);
+
+
+static bool GetFileSize(FILE* file, size_t* sizeBuffer);
+
+
+static size_t CountInstructions(FILE* file);
 
 
 //----------------------------------------------------------------------------------------
@@ -128,12 +160,33 @@ bool Assemble(const char* fileName)
         free(assembledFileName);
         return false;
     }
+    free(assembledFileName);
 
-    bool assemblingResult = AssembleCmds(fileToAsseble, assembledFile);
+    FILE* tempFile = tmpfile();
+    if (tempFile == NULL)
+    {
+        ColoredPrintf(RED, "Can't create temp file.");
+        fclose(fileToAsseble);
+        fclose(assembledFile);
+        return false;
+    }
+
+    bool assemblingResult = AssembleCmds(fileToAsseble, tempFile);
+
+    if (assemblingResult == true)
+    {
+        if (!CopyFileWithHeaderInfo(tempFile, assembledFile))
+        {
+            ColoredPrintf(RED, "Can't copy content of temp file to assembled file.\n");
+            MarkFileAsBeated(assembledFile);
+        }
+    }
+    else
+        MarkFileAsBeated(assembledFile);
 
     fclose(fileToAsseble);
     fclose(assembledFile);
-    free(assembledFileName);
+    fclose(tempFile);
     return assemblingResult;
 }
 
@@ -176,17 +229,19 @@ static bool AssembleCmds(FILE* fileToAssemble, FILE* assembledFile)
 {
     cmdName_t cmdBuffer = WRONG;
     int cmdArgvBuffer[maxCmdArgc] = {};
-    cmdGetStatus_t cmdGetStatus = OK;
+    cmdGetStatus_t cmdGetStatus = CMD_OK;
 
     for (;;)
     {
         cmdGetStatus = CmdGet(fileToAssemble, &cmdBuffer, cmdArgvBuffer);
-        if (cmdGetStatus == NO_CMD)
+
+        if (cmdGetStatus == CMD_NO)
             break;
 
-        if ( cmdGetStatus == WRONG_CMD ||
+        if ( cmdGetStatus == CMD_WRONG ||
             !CmdAssembledWrite(assembledFile, cmdBuffer, cmdArgvBuffer))
         {
+            LOG_PRINT(ERROR, "cmdGetStatus = %s", CmdGetStatusName(cmdGetStatus));
             return false;
         }
     }
@@ -200,54 +255,40 @@ static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer,
 {
     char cmdName[maxCmdLength + 1] = {};
     cmdGetStatus_t cmdGetStatus = GetNextWord(fileToAssemble, cmdName);
+    LOG_PRINT(INFO, "cmdName = <%s>.\n", cmdName);
 
-    if (cmdGetStatus == WRONG_CMD)
+    if (cmdGetStatus == CMD_WRONG)
     {
         ColoredPrintf(RED, "Wrong command name!\n");
-        return WRONG_CMD;
+        LOG_PRINT(ERROR, "cmd <%s> is wrong.\n", cmdName);
+        return CMD_WRONG;
     }
-    if (cmdGetStatus == NO_CMD)
-        return NO_CMD;
+    if (cmdGetStatus == CMD_NO)
+        return CMD_NO;
 
-    if (strcmp(cmdName, "PUSH"))
-    {
+    if (strcmp(cmdName, GET_NAME(PUSH)) == 0)
         CMD_SET(PUSH);
-    }
 
-    else if (strcmp(cmdName, "ADD"))
-    {
+    if (strcmp(cmdName, GET_NAME(ADD)) == 0)
         CMD_SET(ADD);
-    }
 
-    else if (strcmp(cmdName, "SUB"))
-    {
+    if (strcmp(cmdName, GET_NAME(SUB)) == 0)
         CMD_SET(SUB);
-    }
 
-    else if (strcmp(cmdName, "DIV"))
-    {
-        CMD_SET(DIV);
-    }    
+    if (strcmp(cmdName, GET_NAME(DIV)) == 0)
+        CMD_SET(DIV);    
 
-    else if (strcmp(cmdName, "MUL"))
-    {
+    if (strcmp(cmdName, GET_NAME(MUL)) == 0)
         CMD_SET(MUL);
-    }
 
-    else if (strcmp(cmdName, "OUT"))
-    {
+    if (strcmp(cmdName, GET_NAME(OUT)) == 0)
         CMD_SET(OUT);
-    }
 
-    else if (strcmp(cmdName, "IN"))
-    {
+    if (strcmp(cmdName, GET_NAME(IN)) == 0)
         CMD_SET(IN);
-    }
 
-    else 
-        return WRONG_CMD;
-
-    return OK;
+    ColoredPrintf(RED, "Command %s doesn't exist.\n", cmdName);
+    return CMD_WRONG;
 }
 
 
@@ -302,7 +343,7 @@ static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* cmdNameBuffer)
         if (nextChar == EOF)
         {
             if (charNum == 0)
-                return NO_CMD;
+                return CMD_NO;
             
             break;
         }
@@ -317,19 +358,20 @@ static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* cmdNameBuffer)
     }
 
     nextChar = fgetc(fileGetFrom);
-    if (nextChar != EOF || !IsSpace((char) nextChar) || !IsCommentSymbol((char) nextChar))
+    if (nextChar != EOF && !IsSpace((char) nextChar) && !IsCommentSymbol((char) nextChar))
     {
+        LOG_PRINT(INFO, "cmd = <%s>, nextChar = %d\n", cmdNameBuffer, nextChar);
         ungetc(nextChar, fileGetFrom);
-        return WRONG_CMD;
+        return CMD_WRONG;
     }
     ungetc(nextChar, fileGetFrom);
     cmdNameBuffer[maxCmdLength] = '\0';
 
-    return OK;
+    return CMD_OK;
 }
 
 
-bool IsSpace(char symbol)
+static bool IsSpace(char symbol)
 {
     if (symbol == ' ' || symbol == '\t' || symbol == '\n')
         return true;
@@ -338,7 +380,7 @@ bool IsSpace(char symbol)
 }
 
 
-bool IsCommentSymbol(char symbol)
+static bool IsCommentSymbol(char symbol)
 {
     if (symbol == ';')
         return true;
@@ -347,7 +389,7 @@ bool IsCommentSymbol(char symbol)
 }
 
 
-void SkipSpaces(FILE* file)
+static void SkipSpaces(FILE* file)
 {
     int nextChar = 0;
     for (;;)
@@ -364,7 +406,7 @@ void SkipSpaces(FILE* file)
 }
 
 
-void SkipComments(FILE* file)
+static void SkipComments(FILE* file)
 {
     int nextChar = fgetc(file);
     if (nextChar == EOF)
@@ -383,7 +425,7 @@ void SkipComments(FILE* file)
 }
 
 
-bool ConvertToInt(char* string, int* intBuffer)
+static bool ConvertToInt(char* string, int* intBuffer)
 {
     int value = 0;
     const size_t digitCount = strlen(string);
@@ -401,4 +443,100 @@ bool ConvertToInt(char* string, int* intBuffer)
 
     *intBuffer = value;
     return true;
+}
+
+
+static const char* CmdGetStatusName(cmdGetStatus_t cmdGetStatus)
+{
+    switch (cmdGetStatus)
+    {
+    case CMD_OK:
+        return GET_NAME(CMD_OK);
+
+    case CMD_NO:    
+        return GET_NAME(CMD_NO);
+
+    case CMD_WRONG:
+        return GET_NAME(CMD_WRONG);
+
+    default:
+        char* errorMessage = (char*) calloc (64, sizeof(char));
+        sprintf(errorMessage, "cmdGetStatus %d doesn't exist.\n", cmdGetStatus);
+        return errorMessage;
+    }
+}
+
+
+static bool CopyFileWithHeaderInfo(FILE* fileFrom, FILE* fileTo)
+{
+    rewind(fileFrom);
+    const size_t instructionCount = CountInstructions(fileFrom);
+    fprintf(fileTo, "%zu ", instructionCount);
+
+    size_t fileFromSize = 0;
+    if (!GetFileSize(fileFrom, &fileFromSize))
+    {
+        LOG_PRINT(ERROR, "Can't get size of file\n");
+        return false;
+    }
+
+    for (size_t charNum = 0; charNum < fileFromSize; charNum++)
+    {
+        int nextChar = fgetc(fileFrom);
+        if (nextChar == EOF)
+        {
+            LOG_PRINT(ERROR, "Wrong fileFromSize = %zu, charNum = %zu\n", 
+                      fileFromSize, charNum);
+            return false;
+        }
+
+        fputc(nextChar, fileTo);
+    }
+    
+    return true;
+}
+
+
+static void MarkFileAsBeated(FILE* file)
+{
+    rewind(file);
+    fprintf(file, "BEATED!!!\n");
+}
+
+
+static bool GetFileSize(FILE* file, size_t* sizeBuffer)
+{
+    rewind(file);
+    size_t fileSize = 0;
+
+    for (;;)
+    {
+        int symbol = fgetc(file);
+        if (symbol == EOF)
+            break;
+        
+        fileSize++;
+    }
+    *sizeBuffer = fileSize;
+    rewind(file);
+
+    return true;
+}
+
+
+static size_t CountInstructions(FILE* file)
+{
+    rewind(file);
+    int buffer = 0;
+    size_t instructionCount = 0;
+    for (;;)
+    {
+        if (fscanf(file, "%d", &buffer) > 0)
+            instructionCount++;
+        else    
+            break;
+    }
+    rewind(file);
+
+    return instructionCount;
 }
