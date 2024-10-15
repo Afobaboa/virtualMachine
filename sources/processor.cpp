@@ -1,8 +1,10 @@
- #include <stdio.h>
- #include <string.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
- #include "../headers/processor.h"
- #include "../stack/headers/stack.h"
+#include "../headers/processor.h"
+#include "../stack/headers/stack.h"
 
 
 //----------------------------------------------------------------------------------------
@@ -25,10 +27,55 @@
 //----------------------------------------------------------------------------------------
 
 
+typedef uint64_t register64_t;
+struct Registers64
+{
+    register64_t rax;
+    register64_t rbx;
+    register64_t rcx;
+    register64_t rdx;
+};
+
+
+typedef uint32_t register32_t;
+struct Registers32
+{
+    register32_t eax;
+    register32_t ebx;
+    register32_t ecx;
+    register32_t edx;
+};
+
+typedef int instruction_t;
+struct Processor
+{
+    size_t instructionCount;
+    size_t instructionNum;
+    instruction_t* machineCode;
+
+    Stack* stack;
+    Registers64 registers64;
+    Registers32 registers32;
+};
+
+
+//----------------------------------------------------------------------------------------
+
+
 static Stack* stack = NULL;
 
 
 //----------------------------------------------------------------------------------------
+
+
+static void ProcessorInit(Processor* processor, const char* programName);
+
+
+static void ProcessorDelete(Processor* processor);
+
+
+static void InstructionExecute(Processor* processor);
+
 
 
 static void DoStart();
@@ -43,6 +90,18 @@ static void DoEnd();
 
 
 //----------------------------------------------------------------------------------------
+
+
+void ExecuteProgram(const char* programName)
+{
+    Processor processor = {};
+    ProcessorInit(&processor, programName);
+
+    while (processor.instructionNum < processor.instructionCount)
+        InstructionExecute(&processor);
+
+    ProcessorDelete(&processor); 
+}
 
 
 cmdName_t GetCommand()
@@ -141,6 +200,45 @@ void ProсessCommand(cmdName_t command)
 
 
 //----------------------------------------------------------------------------------------
+
+
+static void ProcessorInit(Processor* processor, const char* programName)
+{
+    FILE* executableFile = fopen(programName, "r");
+    fscanf(executableFile, "%zu", &(processor->instructionCount));
+    processor->instructionNum = 0;
+
+    processor->machineCode = (instruction_t*) calloc(processor->instructionCount, 
+                                                     sizeof(instruction_t));
+    for (size_t instructionNum = 0; instructionNum < processor->instructionCount; 
+                                                                instructionNum++)
+    {
+        fscanf(executableFile, "%d", processor->machineCode + instructionNum);
+    }
+    fclose(executableFile);
+
+    STACK_CREATE(processor->stack, sizeof(instruction_t));
+}
+
+
+static void ProcessorDelete(Processor* processor)
+{
+    free(processor->machineCode);
+
+    processor->instructionCount = 0;
+    processor->instructionNum   = 0;
+    processor->machineCode      = NULL;
+    processor->registers32      = {};
+    processor->registers64      = {};
+
+    StackDelete(&(processor->stack));
+}
+
+
+static void InstructionExecute(Processor* processor)
+{
+
+}
 
 
 static void DoStart()

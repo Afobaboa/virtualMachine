@@ -58,6 +58,9 @@ cmdName_t GetCommand();
 void ProсessCommand(cmdName_t command);
 
 
+void ExecuteProgram(const char* programName);
+
+
 //----------------------------------------------------------------------------------------
 
 
