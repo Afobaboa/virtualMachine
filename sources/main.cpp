@@ -9,7 +9,7 @@ int main()
 {
     LOG_OPEN();
 
-    command_t command = WRONG;
+    cmdName_t command = WRONG;
 
     for (;;)
     {

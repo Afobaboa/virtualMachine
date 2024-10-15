@@ -14,7 +14,7 @@
 /**
  * Codes of virtual machine's commands.
  */
-enum COMMAND_CODES
+enum COMMAND_NAMES
 {
     START = 1,
     PUSH,         /**< Push elem to stack. */
@@ -27,9 +27,9 @@ enum COMMAND_CODES
     END,
     WRONG
 };
-typedef enum COMMAND_CODES command_t;
+typedef enum COMMAND_NAMES cmdName_t;
 
-const size_t maxCmdLength = 32;
+const size_t maxCmdNameLength = 32;
 
 
 /**
@@ -52,10 +52,10 @@ const size_t maxCmdArgc = 4;
 //----------------------------------------------------------------------------------------
 
 
-command_t GetCommand();
+cmdName_t GetCommand();
 
 
-void ProсessCommand(command_t command);
+void ProсessCommand(cmdName_t command);
 
 
 //----------------------------------------------------------------------------------------

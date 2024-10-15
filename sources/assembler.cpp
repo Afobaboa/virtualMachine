@@ -10,6 +10,10 @@
 //----------------------------------------------------------------------------------------
 
 
+#define CMD_SET(CMD_NAME)\
+    *cmdName = CMD_NAME;
+
+
 enum COMMAND_GET_STATUS
 {
     OK,
@@ -28,13 +32,26 @@ static bool CheckAsmFileExtension(const char* fileName);
 static void SetObjectFileExtension(char* fileName);
 
 
-static bool AssembleCommands(FILE* fileToAssemble, FILE* assembledFile);
+static bool AssembleCmds(FILE* fileToAssemble, FILE* assembledFile);
 
 
-static cmdGetStatus_t CommandGet(FILE* fileToAssemble, command_t* cmd, int* cmdArgv);
+static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer, 
+                                                   int*       cmdArgvBuffer);
 
 
-static bool CommandAssembledWrite(FILE* assembledFile, command_t cmd, int* cmdArgv);
+static cmdGetStatus_t CmdGetName(FILE* fileGetFrom, char* cmdNameBuffer);
+
+
+static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmd, int* cmdArgv);
+
+
+bool IsSpace(char symbol);
+
+
+bool IsCommentSymbol(char symbol);
+
+
+void SkipSpaces(FILE* file);
 
 
 //----------------------------------------------------------------------------------------
@@ -80,7 +97,7 @@ bool Assemble(const char* fileName)
         return false;
     }
 
-    bool assemblingResult = AssembleCommands(fileToAsseble, assembledFile);
+    bool assemblingResult = AssembleCmds(fileToAsseble, assembledFile);
 
     fclose(fileToAsseble);
     fclose(assembledFile);
@@ -123,20 +140,20 @@ static void SetObjectFileExtension(char* fileName)
 }
 
 
-static bool AssembleCommands(FILE* fileToAssemble, FILE* assembledFile)
+static bool AssembleCmds(FILE* fileToAssemble, FILE* assembledFile)
 {
-    command_t cmdBuffer = WRONG;
+    cmdName_t cmdBuffer = WRONG;
     int cmdArgvBuffer[maxCmdArgc] = {};
     cmdGetStatus_t cmdGetStatus = OK;
 
     for (;;)
     {
-        cmdGetStatus = CommandGet(fileToAssemble, &cmdBuffer, cmdArgvBuffer);
+        cmdGetStatus = CmdGet(fileToAssemble, &cmdBuffer, cmdArgvBuffer);
         if (cmdGetStatus == NO_CMD)
             break;
 
         if ( cmdGetStatus == WRONG_CMD ||
-            !CommandAssembledWrite(assembledFile, cmdBuffer, cmdArgvBuffer))
+            !CmdAssembledWrite(assembledFile, cmdBuffer, cmdArgvBuffer))
         {
             return false;
         }
@@ -146,38 +163,101 @@ static bool AssembleCommands(FILE* fileToAssemble, FILE* assembledFile)
 }
 
 
-static cmdGetStatus_t CommandGet(FILE* fileToAssemble, command_t* cmd, int* cmdArgv)
+static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer, 
+                                                   int*       cmdArgvBuffer)
 {
-    char cmd[maxCmdLength] = {};
-    char* cmdScanfFormat = CmdScanfFormatGet();
-    if (scanf(cmdScanfFormat, cmd) == EOF)
+    char cmdName[maxCmdNameLength + 1] = {};
+    cmdGetStatus_t cmdGetStatus = CmdGetName(fileToAssemble, cmdName);
+
+    if (cmdGetStatus == WRONG_CMD)
     {
-        free(cmdScanfFormat);
-        return NO_CMD;
-    }
-    if (CheckIfScannedCorrect(cmd))
-    {
-        ColoredPrintf(RED, "Wrong command!\n");
-        free(cmdScanfFormat);
+        ColoredPrintf(RED, "Wrong command name!\n");
         return WRONG_CMD;
     }
+    if (cmdGetStatus == NO_CMD)
+        return NO_CMD;
 
-    const size_t maxCmdLineLength = 100;
-    char cmdLine[maxCmdLineLength] = {};
-    if (fgets(cmdLine, max)
+    if (strcmp(cmdName, "PUSH"))
+        CMD_SET(PUSH);
 
-    if (strcmp((const char*) cmd, "PUSH") == 0)
-    {
-        *cmd = PUSH;
-
-    }
-
-    free(cmdScanfFormat);
     return OK;
 }
 
 
-static bool CommandAssembledWrite(FILE* assembledFile, command_t cmd, int* cmdArgv)
+static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmd, int* cmdArgv)
 {
+    
+}
 
+
+static cmdGetStatus_t CmdGetName(FILE* fileGetFrom, char* cmdNameBuffer)
+{
+    SkipSpaces(fileGetFrom);
+
+    int nextChar = 0;
+    for (size_t charNum = 0; charNum < maxCmdNameLength; charNum++)
+    {
+        nextChar = fgetc(fileGetFrom);
+        if (nextChar == EOF)
+        {
+            if (charNum == 0)
+                return NO_CMD;
+            
+            break;
+        }
+
+        if (IsSpace(nextChar) || IsCommentSymbol(nextChar))
+        {
+            ungetc(nextChar, fileGetFrom);
+            break;
+        }
+
+        cmdNameBuffer[charNum] = nextChar;
+    }
+
+    nextChar = fgetc(fileGetFrom);
+    if (nextChar != EOF || !IsSpace(nextChar) || !IsCommentSymbol(nextChar))
+    {
+        ungetc(nextChar, fileGetFrom);
+        return WRONG_CMD;
+    }
+    ungetc(nextChar, fileGetFrom);
+    cmdNameBuffer[maxCmdNameLength] = '\0';
+
+    return OK;
+}
+
+
+bool IsSpace(char symbol)
+{
+    if (symbol == ' ' || symbol == '\t' || symbol == '\n')
+        return true;
+
+    return false;
+}
+
+
+bool IsCommentSymbol(char symbol)
+{
+    if (symbol == ';')
+        return true;
+    
+    return false;
+}
+
+
+void SkipSpaces(FILE* file)
+{
+    int nextChar = 0;
+    for (;;)
+    {
+        nextChar = fgetc(file);
+        
+        if (nextChar == EOF)
+            return;
+
+        if (!IsSpace(nextChar))
+            break;
+    }
+    ungetc(nextChar, file);
 }

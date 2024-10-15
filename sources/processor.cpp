@@ -45,7 +45,7 @@ static void DoEnd();
 //----------------------------------------------------------------------------------------
 
 
-command_t GetCommand()
+cmdName_t GetCommand()
 {
     const size_t maxCommandLength = 10;
     static char command[maxCommandLength + 1] = "";
@@ -91,7 +91,7 @@ command_t GetCommand()
 }
 
 
-void ProсessCommand(command_t command)
+void ProсessCommand(cmdName_t command)
 {
     switch(command) 
     {
