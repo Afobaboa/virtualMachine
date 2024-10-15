@@ -11,46 +11,6 @@
 //----------------------------------------------------------------------------------------
 
 
-#define CMD_SET(CMD_NAME)                                                               \
-{                                                                                       \
-    *cmdNameBuffer = CMD_NAME;                                                          \
-    LOG_PRINT(INFO, "cmdNameBuffer = %s = %d\n", #CMD_NAME, CMD_NAME);                  \
-    char argBuffer[maxCmdLength + 1] = {};                                              \
-    for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)                \
-    {                                                                                   \
-        cmdGetStatus = GetNextWord(fileToAssemble, argBuffer);                          \
-        if (cmdGetStatus != CMD_OK)                                                     \
-        {                                                                               \
-            ColoredPrintf(RED, "Wrong arguments of command %s.\n", GET_NAME(CMD_NAME)); \
-            return cmdGetStatus;                                                        \
-        }                                                                               \
-                                                                                        \
-        LOG_PRINT(INFO, "argBuffer = <%s>\n", argBuffer);                               \
-                                                                                        \
-        if (!ConvertToInt(argBuffer, cmdArgvBuffer + argNum))                           \
-            return CMD_WRONG;                                                           \
-    }                                                                                   \
-    SkipSpaces(fileToAssemble);                                                         \
-    SkipComments(fileToAssemble);                                                       \
-                                                                                        \
-    return CMD_OK;                                                                      \
-}
-
-
-#define CMD_ASSEMBLED_WRITE(CMD_NAME)                                       \
-{                                                                           \
-    LOG_PRINT(INFO, "cmdName = %s\n", #CMD_NAME);                           \
-    fprintf(assembledFile, "%d ", CMD_NAME);                                \
-    for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
-    {                                                                       \
-        fprintf(assembledFile, "%d ", cmdArgv[argNum]);                     \
-    }                                                                       \
-}
-
-
-//----------------------------------------------------------------------------------------
-
-
 enum COMMAND_GET_STATUS
 {
     CMD_OK,
@@ -250,6 +210,32 @@ static bool AssembleCmds(FILE* fileToAssemble, FILE* assembledFile)
 }
 
 
+#define CMD_SET(CMD_NAME)                                                               \
+{                                                                                       \
+    *cmdNameBuffer = CMD_NAME;                                                          \
+    LOG_PRINT(INFO, "cmdNameBuffer = %s = %d\n", #CMD_NAME, CMD_NAME);                  \
+    char argBuffer[maxCmdLength + 1] = {};                                              \
+    for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)                \
+    {                                                                                   \
+        cmdGetStatus = GetNextWord(fileToAssemble, argBuffer);                          \
+        if (cmdGetStatus != CMD_OK)                                                     \
+        {                                                                               \
+            ColoredPrintf(RED, "Wrong arguments of command %s.\n", GET_NAME(CMD_NAME)); \
+            return cmdGetStatus;                                                        \
+        }                                                                               \
+                                                                                        \
+        LOG_PRINT(INFO, "argBuffer = <%s>\n", argBuffer);                               \
+                                                                                        \
+        if (!ConvertToInt(argBuffer, cmdArgvBuffer + argNum))                           \
+            return CMD_WRONG;                                                           \
+    }                                                                                   \
+    SkipSpaces(fileToAssemble);                                                         \
+    SkipComments(fileToAssemble);                                                       \
+                                                                                        \
+    return CMD_OK;                                                                      \
+}
+
+
 static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer, 
                                                    int*       cmdArgvBuffer)
 {
@@ -289,6 +275,18 @@ static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer,
 
     ColoredPrintf(RED, "Command %s doesn't exist.\n", cmdName);
     return CMD_WRONG;
+}
+#undef CMD_SET()
+
+
+#define CMD_ASSEMBLED_WRITE(CMD_NAME)                                       \
+{                                                                           \
+    LOG_PRINT(INFO, "cmdName = %s\n", #CMD_NAME);                           \
+    fprintf(assembledFile, "%d ", CMD_NAME);                                \
+    for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
+    {                                                                       \
+        fprintf(assembledFile, "%d ", cmdArgv[argNum]);                     \
+    }                                                                       \
 }
 
 
@@ -330,6 +328,7 @@ static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmd, int* cmdArgv)
 
     return true;
 }
+#undef CMD_ASSEMBLED_WRITE()
 
 
 static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* cmdNameBuffer)
