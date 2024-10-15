@@ -139,8 +139,8 @@ release: objects_dir clean
 
 
 # Make debug version
-debug: objects_dir $(MAIN_OBJECT) $(VM_OBJECTS) $(STACK_OBJECTS) $(STACK_HEADERS) $\
-													$(LOG_OBJECTS) $(LOG_HEADERS)
+debug: objects_dir $(MAIN_OBJECT) $(VM_OBJECTS) $(VM_HEADERS) $(STACK_OBJECTS) $\
+						 				$(STACK_HEADERS) $(LOG_OBJECTS) $(LOG_HEADERS)
 	@$(CC) $(DEBUG_FLAGS) $(MAIN_OBJECT) $(VM_OBJECTS) $(STACK_OBJECTS) $(LOG_OBJECTS) \
 																		-o $(EXECUTABLE)
 
