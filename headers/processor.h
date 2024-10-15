@@ -29,7 +29,7 @@ enum COMMAND_NAMES
 };
 typedef enum COMMAND_NAMES cmdName_t;
 
-const size_t maxCmdNameLength = 32;
+const size_t maxCmdLength = 32;
 
 
 /**

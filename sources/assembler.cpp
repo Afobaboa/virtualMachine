@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,8 +11,33 @@
 //----------------------------------------------------------------------------------------
 
 
-#define CMD_SET(CMD_NAME)\
-    *cmdName = CMD_NAME;
+#define CMD_SET(CMD_NAME)                                                       \
+{                                                                               \
+    *cmdNameBuffer = CMD_NAME;                                                  \
+    char argBuffer[maxCmdLength + 1] = {};                                      \
+    for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)        \
+    {                                                                           \
+        cmdGetStatus = GetNextWord(fileToAssemble, argBuffer);                  \
+        if (cmdGetStatus != OK)                                                 \
+            return WRONG_CMD;                                                   \
+                                                                                \
+        if (!ConvertToInt(argBuffer, cmdArgvBuffer + argNum))                   \
+            return WRONG_CMD;                                                   \
+    }                                                                           \
+}
+
+
+#define CMD_ASSEMBLED_WRITE(CMD_NAME)                                       \
+{                                                                           \
+    fprintf(assembledFile, "%d ", CMD_NAME);                                \
+    for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
+    {                                                                       \
+        fprintf(assembledFile, "%d ", cmdArgv[argNum]);                     \
+    }                                                                       \
+}
+
+
+//----------------------------------------------------------------------------------------
 
 
 enum COMMAND_GET_STATUS
@@ -39,7 +65,7 @@ static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer,
                                                    int*       cmdArgvBuffer);
 
 
-static cmdGetStatus_t CmdGetName(FILE* fileGetFrom, char* cmdNameBuffer);
+static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* cmdNameBuffer);
 
 
 static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmd, int* cmdArgv);
@@ -52,6 +78,12 @@ bool IsCommentSymbol(char symbol);
 
 
 void SkipSpaces(FILE* file);
+
+
+void SkipComments(FILE* file);
+
+
+bool ConvertToInt(char* string, int* intBuffer);
 
 
 //----------------------------------------------------------------------------------------
@@ -166,8 +198,8 @@ static bool AssembleCmds(FILE* fileToAssemble, FILE* assembledFile)
 static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer, 
                                                    int*       cmdArgvBuffer)
 {
-    char cmdName[maxCmdNameLength + 1] = {};
-    cmdGetStatus_t cmdGetStatus = CmdGetName(fileToAssemble, cmdName);
+    char cmdName[maxCmdLength + 1] = {};
+    cmdGetStatus_t cmdGetStatus = GetNextWord(fileToAssemble, cmdName);
 
     if (cmdGetStatus == WRONG_CMD)
     {
@@ -178,7 +210,42 @@ static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer,
         return NO_CMD;
 
     if (strcmp(cmdName, "PUSH"))
+    {
         CMD_SET(PUSH);
+    }
+
+    else if (strcmp(cmdName, "ADD"))
+    {
+        CMD_SET(ADD);
+    }
+
+    else if (strcmp(cmdName, "SUB"))
+    {
+        CMD_SET(SUB);
+    }
+
+    else if (strcmp(cmdName, "DIV"))
+    {
+        CMD_SET(DIV);
+    }    
+
+    else if (strcmp(cmdName, "MUL"))
+    {
+        CMD_SET(MUL);
+    }
+
+    else if (strcmp(cmdName, "OUT"))
+    {
+        CMD_SET(OUT);
+    }
+
+    else if (strcmp(cmdName, "IN"))
+    {
+        CMD_SET(IN);
+    }
+
+    else 
+        return WRONG_CMD;
 
     return OK;
 }
@@ -186,16 +253,50 @@ static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer,
 
 static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmd, int* cmdArgv)
 {
-    
+    if (assembledFile == NULL || cmdArgv == NULL)
+        return false;
+
+    switch (cmd)
+    {
+    case PUSH:
+        CMD_ASSEMBLED_WRITE(PUSH);
+        break;
+
+    case ADD:
+        CMD_ASSEMBLED_WRITE(ADD);
+        break;
+
+    case SUB:
+        CMD_ASSEMBLED_WRITE(SUB);
+        break;
+
+    case DIV:
+        CMD_ASSEMBLED_WRITE(DIV);
+        break;
+
+    case MUL:
+        CMD_ASSEMBLED_WRITE(MUL);
+        break;
+
+    case OUT:
+        CMD_ASSEMBLED_WRITE(OUT);
+        break;
+
+    case IN:
+        CMD_ASSEMBLED_WRITE(IN);
+        break;
+    }
+
+    return true;
 }
 
 
-static cmdGetStatus_t CmdGetName(FILE* fileGetFrom, char* cmdNameBuffer)
+static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* cmdNameBuffer)
 {
     SkipSpaces(fileGetFrom);
 
     int nextChar = 0;
-    for (size_t charNum = 0; charNum < maxCmdNameLength; charNum++)
+    for (size_t charNum = 0; charNum < maxCmdLength; charNum++)
     {
         nextChar = fgetc(fileGetFrom);
         if (nextChar == EOF)
@@ -206,23 +307,23 @@ static cmdGetStatus_t CmdGetName(FILE* fileGetFrom, char* cmdNameBuffer)
             break;
         }
 
-        if (IsSpace(nextChar) || IsCommentSymbol(nextChar))
+        if (IsSpace((char) nextChar) || IsCommentSymbol((char) nextChar))
         {
             ungetc(nextChar, fileGetFrom);
             break;
         }
 
-        cmdNameBuffer[charNum] = nextChar;
+        cmdNameBuffer[charNum] = (char) nextChar;
     }
 
     nextChar = fgetc(fileGetFrom);
-    if (nextChar != EOF || !IsSpace(nextChar) || !IsCommentSymbol(nextChar))
+    if (nextChar != EOF || !IsSpace((char) nextChar) || !IsCommentSymbol((char) nextChar))
     {
         ungetc(nextChar, fileGetFrom);
         return WRONG_CMD;
     }
     ungetc(nextChar, fileGetFrom);
-    cmdNameBuffer[maxCmdNameLength] = '\0';
+    cmdNameBuffer[maxCmdLength] = '\0';
 
     return OK;
 }
@@ -256,8 +357,48 @@ void SkipSpaces(FILE* file)
         if (nextChar == EOF)
             return;
 
-        if (!IsSpace(nextChar))
+        if (!IsSpace((char) nextChar))
             break;
     }
     ungetc(nextChar, file);
+}
+
+
+void SkipComments(FILE* file)
+{
+    int nextChar = fgetc(file);
+    if (nextChar == EOF)
+        return;
+
+    if (IsCommentSymbol((char) nextChar))
+        for (;;)
+        {
+            nextChar = fgetc(file);
+            if (nextChar == '\n')
+                break;
+        }
+    
+    else    
+        ungetc(nextChar, file);
+}
+
+
+bool ConvertToInt(char* string, int* intBuffer)
+{
+    int value = 0;
+    const size_t digitCount = strlen(string);
+    for(size_t digitNum = 0; digitNum < digitCount; digitNum++)
+    {
+        char nextDigit = string[digitNum];
+        if (!isdigit(nextDigit))
+            return false;
+        
+        if (digitCount > 1 && digitNum == 0 && nextDigit == '0')
+            return false;
+
+        value = value*10 + (nextDigit - '0');
+    }
+
+    *intBuffer = value;
+    return true;
 }
