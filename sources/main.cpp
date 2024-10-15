@@ -22,6 +22,7 @@ int main()
     // }
 
     Assemble("test.asm");
+    ExecuteProgram("test.vm");
 
     LOG_CLOSE();
     return 0;

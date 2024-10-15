@@ -237,7 +237,8 @@ static void ProcessorDelete(Processor* processor)
 
 static void InstructionExecute(Processor* processor)
 {
-
+    ProсessCommand((cmdName_t) processor->machineCode[processor->instructionNum]);
+    processor->instructionNum++;
 }
 
 
