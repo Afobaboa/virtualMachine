@@ -24,6 +24,7 @@ int main()
     if (!Assemble("test.asm"))
     {
         ColoredPrintf(RED, "Assembling failed\n");
+        LOG_CLOSE();
         return 1;
     }
 
