@@ -10,23 +10,6 @@
 //----------------------------------------------------------------------------------------
 
 
-#define DO_OPERATION(operation)                                 \
-    int firstPoppedElem  = 0;                                   \
-    int secondPoppedElem = 0;                                   \
-    if ((StackPop(stack, &firstPoppedElem)  != OK) ||           \
-        (StackPop(stack, &secondPoppedElem) != OK))             \
-    {                                                           \
-        ColoredPrintf(RED, "%s: POP ERROR\n", __FUNCTION__);    \
-        return;                                                 \
-    }                                                           \
-                                                                \
-    int result = firstPoppedElem operation secondPoppedElem;    \
-    StackPush(stack, &result);                              
-
-
-//----------------------------------------------------------------------------------------
-
-
 typedef uint64_t register64_t;
 struct Registers64
 {
@@ -62,12 +45,6 @@ struct Processor
 //----------------------------------------------------------------------------------------
 
 
-static Stack* stack = NULL;
-
-
-//----------------------------------------------------------------------------------------
-
-
 static void ProcessorInit(Processor* processor, const char* programName);
 
 
@@ -78,15 +55,13 @@ static void InstructionExecute(Processor* processor);
 
 
 
-static void DoStart();
-static void DoPush();
-static void DoAdd();
-static void DoSub();
-static void DoDiv();
-static void DoMul();
-static void DoIn();
-static void DoOut();
-static void DoEnd(); 
+static void DoPush(Processor* processor);
+static void DoAdd(Processor* processor);
+static void DoSub(Processor* processor);
+static void DoDiv(Processor* processor);
+static void DoMul(Processor* processor);
+static void DoIn(Processor* processor);
+static void DoOut(Processor* processor);
 
 
 //----------------------------------------------------------------------------------------
@@ -101,101 +76,6 @@ void ExecuteProgram(const char* programName)
         InstructionExecute(&processor);
 
     ProcessorDelete(&processor); 
-}
-
-
-cmdName_t GetCommand()
-{
-    const size_t maxCommandLength = 10;
-    static char command[maxCommandLength + 1] = "";
-    char commandScanfFormat[10] = "";
-    sprintf(commandScanfFormat, "%%%zus", maxCommandLength);
-    scanf(commandScanfFormat, command);
-
-    if (command[maxCommandLength - 1] != '\0')
-    {
-        ColoredPrintf(RED, "SYNTAX ERROR\n");
-        return WRONG;
-    }
-
-    if (strcmp(command, "START") == 0)
-        return START;
-
-    if (strcmp(command, "PUSH") == 0)
-        return PUSH;
-    
-    if (strcmp(command, "ADD") == 0)
-        return ADD;
-
-    if (strcmp(command, "SUB") == 0)
-        return SUB;
-
-    if (strcmp(command, "DIV") == 0)
-        return DIV;
-
-    if (strcmp(command, "MUL") == 0)
-        return MUL;
-
-    if (strcmp(command, "IN") == 0)
-        return IN;
-
-    if (strcmp(command, "OUT") == 0)
-        return OUT;
-
-    if (strcmp(command, "END") == 0)
-        return END;
-
-    ColoredPrintf(RED, "SYNTAX ERROR\n");
-    return WRONG;
-}
-
-
-void ProсessCommand(cmdName_t command)
-{
-    switch(command) 
-    {
-    case START:
-        DoStart();
-        break;
-
-    case PUSH:
-        DoPush();
-        break;
-
-    case ADD:
-        DoAdd();
-        break;
-
-    case SUB:
-        DoSub();
-        break;
-
-    case DIV:
-        DoDiv();
-        break;
-
-    case MUL:
-        DoMul();
-        break;
-
-    case IN:
-        DoIn();
-        break;
-    
-    case OUT:
-        DoOut();
-        break;
-
-    case END:
-        DoEnd();
-        break;
-
-    case WRONG:
-
-    default:
-        ColoredPrintf(RED, "SYNTAX ERROR\n");
-        DoEnd();
-    }
 }
 
 
@@ -237,73 +117,109 @@ static void ProcessorDelete(Processor* processor)
 
 static void InstructionExecute(Processor* processor)
 {
-    ProсessCommand((cmdName_t) processor->machineCode[processor->instructionNum]);
+    cmdName_t cmdName = (cmdName_t) processor->machineCode[processor->instructionNum];
     processor->instructionNum++;
-}
 
-
-static void DoStart()
-{
-    STACK_CREATE(stack, sizeof(int));
-}
-
-static void DoPush()
-{
-    int elem = 0;
-    if (scanf("%d", &elem) <= 0)
+    switch (cmdName)
     {
-        ColoredPrintf(RED, "PUSH ERROR\n");
-        return;
-    }
+    case PUSH:
+        DoPush(processor);
+        break;
+
+    case ADD:
+        DoAdd(processor);
+        break;
     
-    StackPush(stack, &elem);
+    case SUB:
+        DoSub(processor);
+        break;
+
+    case DIV:
+        DoDiv(processor);
+        break;
+
+    case MUL:
+        DoMul(processor);
+        break;
+
+    case IN:
+        DoIn(processor);
+        break;
+
+    case OUT:
+        DoOut(processor);
+        break;
+
+    case WRONG:
+    default:
+        LOG_PRINT(ERROR, "Wrong cmdName = %d\n", cmdName);
+    }
 }
 
 
-static void DoAdd()
+static void DoPush(Processor* processor)
+{
+    int pushedElem = processor->machineCode[processor->instructionNum];
+    processor->instructionNum++;
+    StackPush(processor->stack, &pushedElem);
+}
+
+
+#define DO_OPERATION(operation)                                         \
+{                                                                       \
+    int firstPoppedElem  = 0;                                           \
+    int secondPoppedElem = 0;                                           \
+    if ((StackPop(processor->stack, &firstPoppedElem)  != OK) ||        \
+        (StackPop(processor->stack, &secondPoppedElem) != OK))          \
+    {                                                                   \
+        LOG_PRINT(INFO, "Stack ptr = %p\n", processor->stack);          \
+        ColoredPrintf(RED, "%s: POP ERROR\n", __FUNCTION__);            \
+        return;                                                         \
+    }                                                                   \
+                                                                        \
+    int result = firstPoppedElem operation secondPoppedElem;            \
+    StackPush(processor->stack, &result);                               \
+}
+
+
+static void DoAdd(Processor* processor)
 {
     DO_OPERATION(+);
 }
 
 
-static void DoSub()
+static void DoSub(Processor* processor)
 {
     DO_OPERATION(-);
 }
 
 
-static void DoDiv()
+static void DoDiv(Processor* processor)
 {
     DO_OPERATION(/);
 }
 
 
-static void DoMul()
+static void DoMul(Processor* processor)
 {
     DO_OPERATION(*);
 }
+#undef DO_OPERATION
 
-
-static void DoIn()
+static void DoIn(Processor* processor)
 {
     ColoredPrintf(YELLOW, "IN\n");
 }
 
 
-static void DoOut()
+static void DoOut(Processor* processor)
 {
     int lastElem = 0;
-    if (StackPop(stack, &lastElem) != OK)
+    if (StackPop(processor->stack, &lastElem) != OK)
     {
         ColoredPrintf(RED, "OUT: POP ERROR\n");
         return;
     }
 
-    printf(">%d\n", lastElem);
-}
-
-
-static void DoEnd()
-{
-    StackDelete(&stack);
+    ColoredPrintf(YELLOW, "%d\n", lastElem);
 }
