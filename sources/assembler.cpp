@@ -128,22 +128,71 @@ static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* wordBuffer);
 static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmdName, int* cmdArgv);
 
 
+/** 
+ * This function check if symbol is space symbol.
+ * Space symbols: ' ', '\t', '\n'.
+ * 
+ * @param symbol Symbol.
+ * 
+ * @return true if symbol is a space symbol,
+ * @return false else.
+ */
 static bool IsSpace(char symbol);
 
 
+/**
+ * This functin check if symbol is a comment symbol.
+ * Comment symbol is ';'.
+ * 
+ * @param symbol Symbol.
+ * 
+ * @return true if symbol is a comment symbol,
+ * @return false else.
+ */
 static bool IsCommentSymbol(char symbol);
 
 
+/**
+ * This function skips next space symbols of file and move pointer to file's next char.
+ * 
+ * @param file Pointer to file.
+ */
 static void SkipSpaces(FILE* file);
 
 
+/**
+ * This function skips next comment line of file and 
+ * move pointer to file's next char to next line.
+ * 
+ * @param file Pointer to file.
+ */
 static void SkipComments(FILE* file);
 
 
+/**
+ * This function converts null-terminated string to decimal int and save value in 
+ * intBuffer. This funciton don't check if string is to long, and there may be overflow
+ * of int value.
+ * 
+ * @param string    Null-terminated string.
+ * @param intBuffer Ptr to buffer of int value.
+ * 
+ * @return true if convertion is complete,
+ * @return false if string isn't a number in char's notation.
+ */
 static bool ConvertToInt(char* string, int* intBuffer);
 
 
+/** 
+ * This function convert cmdGetStatus to string with the same name (CMD_OK will be 
+ * converted to "CMD_OK"). This function may be usefull for debugging.
+ * 
+ * @param cmdGetStatus Your cmdGetStatus you want to know.
+ * 
+ * @return Name of cmdGetStatus. If it isn't exist, that will contains in returned string.
+ */
 static const char* CmdGetStatusName(cmdGetStatus_t cmdGetStatus);
+
 
 
 static bool CopyFileWithHeaderInfo(FILE* fileFrom, FILE* fileTo);
