@@ -11,11 +11,14 @@
 //----------------------------------------------------------------------------------------
 
 
+/**
+ * This statuses are used in functions which are trying to get command from .asm file.
+ */
 enum COMMAND_GET_STATUS
 {
-    CMD_OK,
-    CMD_NO,
-    CMD_WRONG
+    CMD_OK,         /**< Next command is readed.                  */
+    CMD_NO,         /**< There are no commands left in .asm file. */
+    CMD_WRONG       /**< Command doesn't exist.                   */
 };
 typedef enum COMMAND_GET_STATUS cmdGetStatus_t;
 
@@ -29,23 +32,100 @@ typedef enum COMMAND_GET_STATUS cmdGetStatus_t;
 //----------------------------------------------------------------------------------------
 
 
-static bool CheckAsmFileExtension(const char* fileName);
+/**
+ * This function check if file's extension is extension you need.
+ * The extension is supposed to be at the end of fileName.
+ * 
+ * @param fileName  Name of file.
+ * @param extension Extension you need. 
+ *                  Extencion must begin with '.' for correct behavour.
+ * 
+ * @return true if extension is correct,
+ * @return false if it isn't true.
+ */
+static bool CheckAsmFileExtension(const char* fileName, const char* extension);
 
 
-static void SetObjectFileExtension(char* fileName);
+/**
+ * This function change file extension. 
+ * ChangeFileExtension("a.b", ".b", ".c") will change "a.b" to "a.c".
+ * This function don't check if fileName have substring prevExtension and 
+ * you must start extension names with '.' for correct behavour.
+ * 
+ * @param fileName      Name of file WITH EXTENCION.
+ * @param prevExtencion Extencion you want to change.
+ *                      fileName MUST ends with prevExtension!!!
+ * @param newExtension  File's extension you want to set. 
+ *                      newExtension's length must be <= prevExtension's length.
+ * 
+ * Because this function don't return error status you should use it very carefully.
+ */
+static void ChangeFileExtension(char* fileName, const char* prevExtension,
+                                                const char* newExtension);
 
 
+/** 
+ * This function convert .asm code from fileToAssemble to machine code of its virtual
+ * machine and write it into assembled file. This function check almost all errors. 
+ * If there are any detected error in fileToAssemble, this function will mark 
+ * assembled file as beated by function MarkFileAsBeated().
+ * 
+ * @param fileToAssemble Ptr to file with .asm code.
+ * @param assembledFile  Ptr to file where will be written machine code.
+ * 
+ * @return true if converting is complete,
+ * @return false if there are any errors. 
+ *         This function will be print about errors to terminal.
+ *         If you find any detected error the information about this isn't printed to
+ *         terminal, make issue about it on github.com/Afobaboa/virtualMachine .
+ */
 static bool AssembleCmds(FILE* fileToAssemble, FILE* assembledFile);
 
 
+/**
+ * This function tries to get next command from fileToAssemble.
+ * This function assumes cmdArgvBuffer is maxCmdArgc, check it yourself.
+ * 
+ * @param fileToAssemble File with .asm commands for this virtual machine.
+ * @param cmdNameBuffer  Ptr to buffer there will be witten name of next command.
+ * @param cmdArgvBuffer  Ptr to buffer there will be printed arguments of next command.
+ * 
+ * @return CMD_OK if all is OK,
+ * @return CMD_NO if there are no commands left,
+ * @return CMD_WRONG if next command's name of arguments are wrong.
+ */
 static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer, 
                                                    int*       cmdArgvBuffer);
 
 
-static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* cmdNameBuffer);
+/**
+ * This function get next word from file with .asm commands.
+ * Word is a set of chars which are not separated by cpases or comments.
+ * 
+ * @param fileGetFrom File which you try to get next word from.
+ * @param wordBuffer  Ptr to word buffer. Buffer capacity must be not less than 
+ *                    maxCmdLength. You must ckeck it yourself.
+ * 
+ * @return CMD_OK if all is OK,
+ * @return CMD_NO if there are not any commands left,
+ * @return CMD_WRONG if word from fileGetFrom is too long. 
+ *         Ptr to next char of fileGetFrom won't be set in start's position.
+ */
+static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* wordBuffer);
 
 
-static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmd, int* cmdArgv);
+/**
+ * This function will write assembled command (machine code of this command) 
+ * to assembledFile.
+ * 
+ * @param assembledFile Ptr to file with machine code.
+ * @param cmdName       Name of command.
+ * @param cmdArgv       Array with command's arguments.
+ * 
+ * @return true if writing is comlete,
+ * @return false else.
+ */
+static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmdName, int* cmdArgv);
 
 
 static bool IsSpace(char symbol);
@@ -89,7 +169,7 @@ bool Assemble(const char* fileName)
         return false;
     }
 
-    if (!CheckAsmFileExtension(fileName))
+    if (!CheckAsmFileExtension(fileName, ".asm"))
     {
         ColoredPrintf(RED, "Wrong file extension.\n");
         return false;
@@ -111,7 +191,7 @@ bool Assemble(const char* fileName)
         return false;
     }
     memmove(assembledFileName, fileName, nameLength);
-    SetObjectFileExtension(assembledFileName);
+    ChangeFileExtension(assembledFileName, ".asm", ".vm");
     FILE* assembledFile = fopen(assembledFileName, "w");
     if (assembledFile == NULL)
     {
@@ -154,13 +234,12 @@ bool Assemble(const char* fileName)
 //----------------------------------------------------------------------------------------
 
 
-static bool CheckAsmFileExtension(const char* fileName)
+static bool CheckAsmFileExtension(const char* fileName, const char* extension)
 {
-    const char*  extension       = ".asm";
     const size_t nameLength      = strlen(fileName);
     const size_t extensionLength = strlen(extension);
 
-    if (nameLength <= extensionLength)
+    if (nameLength <= extensionLength || extension[0] != '.')
         return false;
 
     if (strcmp(fileName + nameLength - extensionLength, extension) != 0)
@@ -170,17 +249,15 @@ static bool CheckAsmFileExtension(const char* fileName)
 }
 
 
-static void SetObjectFileExtension(char* fileName)
+static void ChangeFileExtension(char* fileName, const char* prevExtension,
+                                                const char* newExtension)
 {
-    const char* prevExtencion = ".asm";
-    const char* newExtencion  = ".vm";
-
-    const size_t prevExtencionLength = strlen(prevExtencion);
-    const size_t newExtencionLength  = strlen(newExtencion);
+    const size_t prevExtencionLength = strlen(prevExtension);
+    const size_t newExtencionLength  = strlen(newExtension);
     const size_t nameLength          = strlen(fileName);
     
     memmove(fileName + nameLength - prevExtencionLength, 
-            newExtencion, 
+            newExtension, 
             newExtencionLength + 1);
 }
 
@@ -287,12 +364,12 @@ static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer,
 }
 
 
-static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmd, int* cmdArgv)
+static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmdName, int* cmdArgv)
 {
     if (assembledFile == NULL || cmdArgv == NULL)
         return false;
 
-    switch (cmd)
+    switch (cmdName)
     {
     case PUSH:
         CMD_ASSEMBLED_WRITE(PUSH);
@@ -324,7 +401,7 @@ static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmd, int* cmdArgv)
 
     case WRONG:
     default:
-        LOG_PRINT(ERROR, "cmd = %d\n", cmd);
+        LOG_PRINT(ERROR, "cmdName = %d\n", cmdName);
     }
 
     return true;
@@ -332,7 +409,7 @@ static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmd, int* cmdArgv)
 #undef CMD_ASSEMBLED_WRITE
 
 
-static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* cmdNameBuffer)
+static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* wordBuffer)
 {
     SkipSpaces(fileGetFrom);
 
@@ -354,7 +431,7 @@ static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* cmdNameBuffer)
             break;
         }
 
-        cmdNameBuffer[charNum] = (char) nextChar;
+        wordBuffer[charNum] = (char) nextChar;
     }
 
     nextChar = fgetc(fileGetFrom);
@@ -365,7 +442,7 @@ static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* cmdNameBuffer)
         return CMD_WRONG;
     }
     ungetc(nextChar, fileGetFrom);
-    cmdNameBuffer[maxCmdLength] = '\0';
+    wordBuffer[maxCmdLength] = '\0';
 
     return CMD_OK;
 }
