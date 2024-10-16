@@ -274,7 +274,7 @@ static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer,
     ColoredPrintf(RED, "Command %s doesn't exist.\n", cmdName);
     return CMD_WRONG;
 }
-#undef CMD_SET()
+#undef CMD_SET
 
 
 #define CMD_ASSEMBLED_WRITE(CMD_NAME)                                       \
@@ -321,11 +321,15 @@ static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmd, int* cmdArgv)
     case IN:
         CMD_ASSEMBLED_WRITE(IN);
         break;
+
+    case WRONG:
+    default:
+        LOG_PRINT(ERROR, "cmd = %d\n", cmd);
     }
 
     return true;
 }
-#undef CMD_ASSEMBLED_WRITE()
+#undef CMD_ASSEMBLED_WRITE
 
 
 static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* cmdNameBuffer)
