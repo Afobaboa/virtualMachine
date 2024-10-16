@@ -48,7 +48,7 @@ const size_t maxCmdArgc = 4;
 //----------------------------------------------------------------------------------------
 
 
-void ExecuteProgram(const char* programName);
+bool ExecuteProgram(const char* programName);
 
 
 //----------------------------------------------------------------------------------------

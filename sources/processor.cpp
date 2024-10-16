@@ -51,7 +51,7 @@ static void ProcessorInit(Processor* processor, const char* programName);
 static void ProcessorDelete(Processor* processor);
 
 
-static void InstructionExecute(Processor* processor);
+static bool InstructionExecute(Processor* processor);
 
 
 
@@ -60,22 +60,24 @@ static void DoAdd(Processor* processor);
 static void DoSub(Processor* processor);
 static void DoDiv(Processor* processor);
 static void DoMul(Processor* processor);
-static void DoIn(Processor* processor);
+static bool DoIn(Processor* processor);
 static void DoOut(Processor* processor);
 
 
 //----------------------------------------------------------------------------------------
 
 
-void ExecuteProgram(const char* programName)
+bool ExecuteProgram(const char* programName)
 {
     Processor processor = {};
     ProcessorInit(&processor, programName);
 
     while (processor.instructionNum < processor.instructionCount)
-        InstructionExecute(&processor);
+        if (!InstructionExecute(&processor))
+            return false;
 
-    ProcessorDelete(&processor); 
+    ProcessorDelete(&processor);
+    return true;
 }
 
 
@@ -115,7 +117,7 @@ static void ProcessorDelete(Processor* processor)
 }
 
 
-static void InstructionExecute(Processor* processor)
+static bool InstructionExecute(Processor* processor)
 {
     cmdName_t cmdName = (cmdName_t) processor->machineCode[processor->instructionNum];
     processor->instructionNum++;
@@ -143,7 +145,8 @@ static void InstructionExecute(Processor* processor)
         break;
 
     case IN:
-        DoIn(processor);
+        if (!DoIn(processor))
+            return false;
         break;
 
     case OUT:
@@ -153,7 +156,10 @@ static void InstructionExecute(Processor* processor)
     case WRONG:
     default:
         LOG_PRINT(ERROR, "Wrong cmdName = %d\n", cmdName);
+        return false;
     }
+
+    return true;
 }
 
 
@@ -206,9 +212,15 @@ static void DoMul(Processor* processor)
 }
 #undef DO_OPERATION
 
-static void DoIn(Processor* processor)
+
+static bool DoIn(Processor* processor)
 {
-    ColoredPrintf(YELLOW, "IN\n");
+    int inputNum = 0;
+    if (scanf("%d", &inputNum) <= 0)
+        return false;
+
+    StackPush(processor->stack, &inputNum);
+    return true;
 }
 
 
