@@ -21,8 +21,14 @@ int main()
     //     break;
     // }
 
-    Assemble("test.asm");
-    ExecuteProgram("test.vm");
+    if (!Assemble("test.asm"))
+    {
+        ColoredPrintf(RED, "Assembling failed\n");
+        return 1;
+    }
+
+    if (!ExecuteProgram("test.vm"))
+        ColoredPrintf(RED, "Executing failed\n");
 
     LOG_CLOSE();
     return 0;
