@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../headers/processor.h"
-#include "../stack/headers/stack.h"
+#include "processor.h"
+#include "stack.h"
 
 
 //----------------------------------------------------------------------------------------

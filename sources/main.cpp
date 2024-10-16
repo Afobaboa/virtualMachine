@@ -1,5 +1,5 @@
-#include "../headers/assembler.h"
-#include "../headers/processor.h"
+#include "assembler.h"
+#include "processor.h"
 
 
 //----------------------------------------------------------------------------------------

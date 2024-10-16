@@ -25,12 +25,13 @@ DEBUG_FLAGS=-D _DEBUG -ggdb3 -std=c++17 -O0 -Wall $\
 bounds,enum,float-cast-overflow,float-divide-by-zero,$\
 integer-divide-by-zero,leak,nonnull-attribute,null,object-size,$\
 return,returns-nonnull-attribute,shift,signed-integer-overflow,$\
-undefined,unreachable,vla-bound,vptr
+undefined,unreachable,vla-bound,vptr $\
+-Iheaders -Istack/headers -Istack/logPrinter
 
 
 # Flags for release version compilation
 RELEASE_FLAGS=-Wmissing-declarations -Wempty-body -DNDEBUG -DLOG_SWITCH_OFF -mavx2 $\
-																	-DDEBUG_SWITCH_OFF
+-DDEBUG_SWITCH_OFF -Iheaders -Istack/headers -Istack/logPrinter
 
 
 #-----------------------------------------------------------------------------------------

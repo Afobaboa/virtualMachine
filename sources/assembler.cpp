@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../headers/assembler.h"
-#include "../headers/processor.h"
-#include "../stack/logPrinter/logPrinter.h"
+#include "assembler.h"
+#include "processor.h"
+#include "logPrinter.h"
 
 
 //----------------------------------------------------------------------------------------
