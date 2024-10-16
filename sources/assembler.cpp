@@ -201,7 +201,7 @@ static bool AssembleCmds(FILE* fileToAssemble, FILE* assembledFile)
         if ( cmdGetStatus == CMD_WRONG ||
             !CmdAssembledWrite(assembledFile, cmdBuffer, cmdArgvBuffer))
         {
-            LOG_PRINT(ERROR, "cmdGetStatus = %s", CmdGetStatusName(cmdGetStatus));
+            // LOG_PRINT(ERROR, "cmdGetStatus = %s", CmdGetStatusName(cmdGetStatus));
             return false;
         }
     }
@@ -213,7 +213,6 @@ static bool AssembleCmds(FILE* fileToAssemble, FILE* assembledFile)
 #define CMD_SET(CMD_NAME)                                                               \
 {                                                                                       \
     *cmdNameBuffer = CMD_NAME;                                                          \
-    LOG_PRINT(INFO, "cmdNameBuffer = %s = %d\n", #CMD_NAME, CMD_NAME);                  \
     char argBuffer[maxCmdLength + 1] = {};                                              \
     for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)                \
     {                                                                                   \
@@ -224,7 +223,6 @@ static bool AssembleCmds(FILE* fileToAssemble, FILE* assembledFile)
             return cmdGetStatus;                                                        \
         }                                                                               \
                                                                                         \
-        LOG_PRINT(INFO, "argBuffer = <%s>\n", argBuffer);                               \
                                                                                         \
         if (!ConvertToInt(argBuffer, cmdArgvBuffer + argNum))                           \
             return CMD_WRONG;                                                           \
@@ -241,12 +239,12 @@ static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer,
 {
     char cmdName[maxCmdLength + 1] = {};
     cmdGetStatus_t cmdGetStatus = GetNextWord(fileToAssemble, cmdName);
-    LOG_PRINT(INFO, "cmdName = <%s>.\n", cmdName);
+    // LOG_PRINT(INFO, "cmdName = <%s>.\n", cmdName);
 
     if (cmdGetStatus == CMD_WRONG)
     {
         ColoredPrintf(RED, "Wrong command name!\n");
-        LOG_PRINT(ERROR, "cmd <%s> is wrong.\n", cmdName);
+        // LOG_PRINT(ERROR, "cmd <%s> is wrong.\n", cmdName);
         return CMD_WRONG;
     }
     if (cmdGetStatus == CMD_NO)
@@ -281,7 +279,6 @@ static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer,
 
 #define CMD_ASSEMBLED_WRITE(CMD_NAME)                                       \
 {                                                                           \
-    LOG_PRINT(INFO, "cmdName = %s\n", #CMD_NAME);                           \
     fprintf(assembledFile, "%d ", CMD_NAME);                                \
     for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
     {                                                                       \
@@ -359,7 +356,7 @@ static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* cmdNameBuffer)
     nextChar = fgetc(fileGetFrom);
     if (nextChar != EOF && !IsSpace((char) nextChar) && !IsCommentSymbol((char) nextChar))
     {
-        LOG_PRINT(INFO, "cmd = <%s>, nextChar = %d\n", cmdNameBuffer, nextChar);
+        // LOG_PRINT(INFO, "cmd = <%s>, nextChar = %d\n", cmdNameBuffer, nextChar);
         ungetc(nextChar, fileGetFrom);
         return CMD_WRONG;
     }
@@ -475,7 +472,7 @@ static bool CopyFileWithHeaderInfo(FILE* fileFrom, FILE* fileTo)
     size_t fileFromSize = 0;
     if (!GetFileSize(fileFrom, &fileFromSize))
     {
-        LOG_PRINT(ERROR, "Can't get size of file\n");
+        // LOG_PRINT(ERROR, "Can't get size of file\n");
         return false;
     }
 
@@ -484,8 +481,8 @@ static bool CopyFileWithHeaderInfo(FILE* fileFrom, FILE* fileTo)
         int nextChar = fgetc(fileFrom);
         if (nextChar == EOF)
         {
-            LOG_PRINT(ERROR, "Wrong fileFromSize = %zu, charNum = %zu\n", 
-                      fileFromSize, charNum);
+            // LOG_PRINT(ERROR, "Wrong fileFromSize = %zu, charNum = %zu\n", 
+                    //   fileFromSize, charNum);
             return false;
         }
 
