@@ -1,5 +1,6 @@
 #include "assembler.h"
 #include "processor.h"
+#include "labelArray.h"
 
 
 //----------------------------------------------------------------------------------------
@@ -8,18 +9,6 @@
 int main() 
 {
     LOG_OPEN();
-
-    // cmdName_t command = WRONG;
-
-    // for (;;)
-    // {
-    //     command = GetCommand();
-    //     ColoredPrintf(WHITE, "%d\n", command);
-    //     ProсessCommand(command);
-        
-    //     if (command == END || command == WRONG)
-    //     break;
-    // }
 
     if (!Assemble("test.asm"))
     {
@@ -30,7 +19,7 @@ int main()
 
     if (!ExecuteProgram("test.vm"))
         ColoredPrintf(RED, "Executing failed\n");
-
+        
     LOG_CLOSE();
     return 0;
 }

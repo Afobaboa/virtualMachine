@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "labelArray.h"
-#include "logPrinter.h"
 
 
 //----------------------------------------------------------------------------------------
@@ -65,10 +64,10 @@ void LabelArrayDump(LabelArray* labelArray, Place place)
 
     if (labelArray->data != NULL)
     {
-        LOG_DUMMY_PRINT("Labels:");
+        LOG_DUMMY_PRINT("Labels:\n");
         char* format = GetArrayPrintingFormat(place, labelArray->labelCount);
 
-        for (size_t labelNum = 0; labelNum < labelArray->labelCount; labelNum)
+        for (size_t labelNum = 0; labelNum < labelArray->labelCount; labelNum++)
         {
             LOG_DUMMY_PRINT(format, labelNum);
             LOG_DUMMY_PRINT("\n");
@@ -83,14 +82,31 @@ void LabelArrayDump(LabelArray* labelArray, Place place)
 
 bool LabelAdd(LabelArray* labelArray, char* labelName, const size_t instructionNum)
 {
-    if (labelName == NULL || instructionNum == labelPoisonNum)
+    if (labelName == NULL)
+    {
+        LOG_PRINT(ERROR, "labelName == NULL\n");
         return false;
+    }
+    
+    if (instructionNum == labelPoisonNum)
+    {
+        LOG_PRINT(ERROR, "instructionNum == POSON == %zu\n", labelPoisonNum);
+        return false;
+    }
 
     Label* label = labelArray->data + labelArray->labelCount;
     label->instructionNum = instructionNum;
-    memmove(label->name, labelName, maxLabelNameLength);
 
-    labelArray->labelCount++;
+    for (size_t charNum = 0; charNum < maxLabelNameLength; charNum++)
+    {
+        if (labelName[charNum] == '\0')
+            break;
+        
+        label->name[charNum] = labelName[charNum];
+    }
+
+    (labelArray->labelCount)++;
+    return true;
 }
 
 
@@ -102,7 +118,7 @@ bool LabelFind(LabelArray* labelArray, char* labelName, size_t* instructionNumBu
         return false;
     }
 
-    for (size_t labelNum = 0; labelNum < labelArray->labelCount; labelNum)
+    for (size_t labelNum = 0; labelNum < labelArray->labelCount; labelNum++)
     {
         Label* label = labelArray->data + labelNum;
         if (strcmp(label->name, labelName) == 0)
@@ -205,7 +221,7 @@ static void LabelDump(Label* label)
     if (label->instructionNum == labelPoisonNum)
         LOG_DUMMY_PRINT("***");
 
-    LOG_DUMMY_PRINT("instructionNum = %d\n", label->instructionNum);
+    LOG_DUMMY_PRINT("instructionNum = %zu\n", label->instructionNum);
 }
 
 
