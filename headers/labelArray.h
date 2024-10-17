@@ -12,11 +12,11 @@
 
 
 const size_t maxLabelNameLength = 32;
-const size_t poisonLabelNum     = (size_t) -1;
+const size_t labelPoisonNum     = (size_t) -1;
 
 struct Label
 {
-    char*  labelName;
+    char   name[maxLabelNameLength + 1];
     size_t instructionNum;
 };
 
@@ -25,7 +25,7 @@ const size_t maxLabelCount = 128;
 
 struct LabelArray
 {
-    Label* labelData;
+    Label* data;
     size_t labelCount;
 };
 
@@ -33,18 +33,19 @@ struct LabelArray
 //----------------------------------------------------------------------------------------
 
 
-bool LabelArrayCreate(LabelArray* labelArray);
+bool LabelArrayCreate(LabelArray* labelArray, Place place);
+
+#define LABEL_ARRAY_CREATE(labelArray) \
+    LabelArrayCreate(labelArray, GET_PLACE())
 
 
-bool LabelArrayDelete(LabelArray* labelArray);
+void LabelArrayDelete(LabelArray* labelArray);
 
 
-void LabelArrayDump(LabelArray* labelArray, 
-                    const char* fileName, const char* functionName, const size_t lineNum);
+void LabelArrayDump(LabelArray* labelArray, Place place);
 
-                
 #define LABEL_ARRAY_DUMP(labelArrayPtr) \
-    LabelArrayDump(labelArrayPtr, __FILE__, __FUNCTION__, __LINE__)
+    LabelArrayDump(labelArrayPtr, GET_PLACE())
 
 
 bool LabelAdd(LabelArray* labelArray, char* labelName, const size_t instructionNum);
