@@ -11,6 +11,16 @@
  //---------------------------------------------------------------------------------------
 
 
+typedef uint64_t instruction_t;
+
+ struct MachineCode
+ {
+    size_t instructionCount;
+    size_t instructionNum;
+    instruction_t* code;
+ };
+
+
 /**
  * Codes of virtual machine's commands.
  */

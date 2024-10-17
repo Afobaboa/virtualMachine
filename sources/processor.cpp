@@ -37,13 +37,9 @@ struct Registers
 };
 
 
-typedef int instruction_t;
 struct Processor
 {
-    size_t instructionCount;
-    size_t instructionNum;
-    instruction_t* machineCode;
-
+    MachineCode machineCode;
     Stack* stack;
     Registers registers;
 };
@@ -79,7 +75,7 @@ bool ExecuteProgram(const char* programName)
     Processor processor = {};
     ProcessorInit(&processor, programName);
 
-    while (processor.instructionNum < processor.instructionCount)
+    while (processor.machineCode.instructionNum < processor.machineCode.instructionCount)
         if (!InstructionExecute(&processor))
             return false;
 
@@ -94,15 +90,15 @@ bool ExecuteProgram(const char* programName)
 static void ProcessorInit(Processor* processor, const char* programName)
 {
     FILE* executableFile = fopen(programName, "r");
-    fscanf(executableFile, "%zu", &(processor->instructionCount));
-    processor->instructionNum = 0;
+    fscanf(executableFile, "%zu", &(processor->machineCode.instructionCount));
+    processor->machineCode.instructionNum = 0;
 
-    processor->machineCode = (instruction_t*) calloc(processor->instructionCount, 
-                                                     sizeof(instruction_t));
-    for (size_t instructionNum = 0; instructionNum < processor->instructionCount; 
-                                                                instructionNum++)
+    const size_t instructionCount = processor->machineCode.instructionCount;
+    processor->machineCode.code = (instruction_t*) calloc(instructionCount,
+                                                          sizeof(instruction_t));
+    for (size_t instructionNum = 0; instructionNum < instructionCount; instructionNum++)
     {
-        fscanf(executableFile, "%d", processor->machineCode + instructionNum);
+        fscanf(executableFile, "%d", processor->machineCode.code + instructionNum);
     }
     fclose(executableFile);
 
@@ -112,12 +108,12 @@ static void ProcessorInit(Processor* processor, const char* programName)
 
 static void ProcessorDelete(Processor* processor)
 {
-    free(processor->machineCode);
+    free(processor->machineCode.code);
 
-    processor->instructionCount = 0;
-    processor->instructionNum   = 0;
-    processor->machineCode      = NULL;
-    processor->registers        = {};
+    processor->machineCode.instructionCount = 0;
+    processor->machineCode.instructionNum   = 0;
+    processor->machineCode.code             = NULL;
+    processor->registers                    = {};
 
     StackDelete(&(processor->stack));
 }
@@ -125,8 +121,9 @@ static void ProcessorDelete(Processor* processor)
 
 static bool InstructionExecute(Processor* processor)
 {
-    cmdName_t cmdName = (cmdName_t) processor->machineCode[processor->instructionNum];
-    processor->instructionNum++;
+    size_t instructionNum =processor->machineCode.instructionNum;
+    cmdName_t cmdName = (cmdName_t) processor->machineCode.code[instructionNum];
+    processor->machineCode.instructionNum++;
 
     switch (cmdName)
     {
@@ -171,8 +168,9 @@ static bool InstructionExecute(Processor* processor)
 
 static void DoPush(Processor* processor)
 {
-    int pushedElem = processor->machineCode[processor->instructionNum];
-    processor->instructionNum++;
+    size_t instructionNum = processor->machineCode.instructionNum;
+    int pushedElem = processor->machineCode.code[instructionNum];
+    processor->machineCode.instructionNum++;
     StackPush(processor->stack, &pushedElem);
 }
 

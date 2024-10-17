@@ -26,7 +26,7 @@ typedef enum COMMAND_GET_STATUS cmdGetStatus_t;
 //----------------------------------------------------------------------------------------
 
 
-// static size_t lineNum = 0;
+static size_t lineNum = 0;
 
 
 //----------------------------------------------------------------------------------------
@@ -64,6 +64,7 @@ static void ChangeFileExtension(char* fileName, const char* prevExtension,
                                                 const char* newExtension);
 
 
+// TODO: edit documentation
 /** 
  * This function convert .asm code from fileToAssemble to machine code of its virtual
  * machine and write it into assembled file. This function check almost all errors. 
@@ -79,7 +80,7 @@ static void ChangeFileExtension(char* fileName, const char* prevExtension,
  *         If you find any detected error the information about this isn't printed to
  *         terminal, make issue about it on github.com/Afobaboa/virtualMachine .
  */
-static bool AssembleCmds(FILE* fileToAssemble, FILE* assembledFile);
+static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode);
 
 
 /**
@@ -207,6 +208,12 @@ static bool GetFileSize(FILE* file, size_t* sizeBuffer);
 static size_t CountInstructions(FILE* file);
 
 
+static bool MachineCodeWriteToFile(MachineCode* machineCode, char* fileName);
+
+
+static char* FileGetContent(const char* fileName);
+
+
 //----------------------------------------------------------------------------------------
 
 
@@ -224,58 +231,38 @@ bool Assemble(const char* fileName)
         return false;
     }
 
-    FILE* fileToAsseble = fopen(fileName, "r");
-    if (fileToAsseble == NULL)
+    char* fileToAssembleContent = FileGetContent(fileName);
+    if (fileToAssembleContent == NULL)
     {
-        ColoredPrintf(RED, "Can't open file. Check if file exists.\n");
+        ColoredPrintf(RED, "Assembler error: can't read content of %s.\n", fileName);
         return false;
     }
+    
+    // TODO: add new file with MachineCode methods
+    MachineCode machineCode = {.instructionCount = 1024,
+                               .instructionNum = 0,
+                               .code = NULL};
+    machineCode.code = (instruction_t*) calloc(machineCode.instructionCount, 
+                                               sizeof(instruction_t));
+    bool assemblingResult = AssembleCmds(fileToAssembleContent, &machineCode);
+    machineCode.instructionCount = machineCode.instructionNum; // For correct writing to file
 
     const size_t nameLength = strlen(fileName);
     char* assembledFileName = (char*) calloc(nameLength + 1, sizeof(char));
     if (assembledFileName == NULL)
     {
         ColoredPrintf(RED, "Can't allocate memory for object file name.");
-        fclose(fileToAsseble);
         return false;
     }
     memmove(assembledFileName, fileName, nameLength);
     ChangeFileExtension(assembledFileName, ".asm", ".vm");
-    FILE* assembledFile = fopen(assembledFileName, "w");
-    if (assembledFile == NULL)
-    {
-        ColoredPrintf(RED, "Can't create object file.\n");
-        fclose(fileToAsseble);
-        free(assembledFileName);
-        return false;
-    }
+
+    if (assemblingResult)
+        assemblingResult = MachineCodeWriteToFile(&machineCode, assembledFileName);
+
+    free(machineCode.code);
+    free(fileToAssembleContent);
     free(assembledFileName);
-
-    FILE* tempFile = tmpfile();
-    if (tempFile == NULL)
-    {
-        ColoredPrintf(RED, "Can't create temp file.");
-        fclose(fileToAsseble);
-        fclose(assembledFile);
-        return false;
-    }
-
-    bool assemblingResult = AssembleCmds(fileToAsseble, tempFile);
-
-    if (assemblingResult == true)
-    {
-        if (!CopyFileWithHeaderInfo(tempFile, assembledFile))
-        {
-            ColoredPrintf(RED, "Can't copy content of temp file to assembled file.\n");
-            MarkFileAsBeated(assembledFile);
-        }
-    }
-    else
-        MarkFileAsBeated(assembledFile);
-
-    fclose(fileToAsseble);
-    fclose(assembledFile);
-    fclose(tempFile);
     return assemblingResult;
 }
 
@@ -311,7 +298,7 @@ static void ChangeFileExtension(char* fileName, const char* prevExtension,
 }
 
 
-static bool AssembleCmds(FILE* fileToAssemble, FILE* assembledFile)
+static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode)
 {
     cmdName_t cmdBuffer = WRONG;
     int cmdArgvBuffer[maxCmdArgc] = {};
@@ -639,4 +626,40 @@ static size_t CountInstructions(FILE* file)
     rewind(file);
 
     return instructionCount;
+}
+
+
+static bool MachineCodeWriteToFile(MachineCode* machineCode, char* fileName)
+{
+    FILE* file = fopen(fileName, "wb");
+    if (file == NULL)
+    {
+        ColoredPrintf(RED, "Can't write machine code to %s.\n", fileName);
+        return false;
+    }
+
+    fwrite(&(machineCode->instructionCount), sizeof(size_t), 1, file);
+    fwrite(machineCode->code, sizeof(instruction_t), machineCode->instructionCount, file);
+
+    fclose(file);
+    return true;
+}
+
+
+static char* FileGetContent(const char* fileName)
+{
+    FILE* file = fopen(fileName, "rb");
+    if (file == NULL)
+        return NULL;
+     
+    size_t charCount = 0;
+    if (!GetFileSize(file, &charCount))
+        return NULL;
+                                            // +1 for make contentBuffer null-terminated
+    char* contentBuffer = (char*) calloc(charCount + 1, sizeof(char));
+    if (contentBuffer == NULL)
+        return NULL;
+
+    fread(contentBuffer, sizeof(char), charCount, file);
+    return contentBuffer
 }
