@@ -29,6 +29,14 @@ struct Registers32
     register32_t edx;
 };
 
+
+struct Registers
+{
+    Registers64 register64;
+    Registers32 register32;
+};
+
+
 typedef int instruction_t;
 struct Processor
 {
@@ -37,8 +45,7 @@ struct Processor
     instruction_t* machineCode;
 
     Stack* stack;
-    Registers64 registers64;
-    Registers32 registers32;
+    Registers registers;
 };
 
 
@@ -110,8 +117,7 @@ static void ProcessorDelete(Processor* processor)
     processor->instructionCount = 0;
     processor->instructionNum   = 0;
     processor->machineCode      = NULL;
-    processor->registers32      = {};
-    processor->registers64      = {};
+    processor->registers        = {};
 
     StackDelete(&(processor->stack));
 }

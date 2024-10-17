@@ -336,27 +336,31 @@ static bool AssembleCmds(FILE* fileToAssemble, FILE* assembledFile)
 }
 
 
-#define CMD_SET(CMD_NAME)                                                               \
-{                                                                                       \
-    *cmdNameBuffer = CMD_NAME;                                                          \
-    char argBuffer[maxCmdLength + 1] = {};                                              \
-    for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)                \
-    {                                                                                   \
-        cmdGetStatus = GetNextWord(fileToAssemble, argBuffer);                          \
-        if (cmdGetStatus != CMD_OK)                                                     \
-        {                                                                               \
-            ColoredPrintf(RED, "Wrong arguments of command %s.\n", GET_NAME(CMD_NAME)); \
-            return cmdGetStatus;                                                        \
-        }                                                                               \
-                                                                                        \
-                                                                                        \
-        if (!ConvertToInt(argBuffer, cmdArgvBuffer + argNum))                           \
-            return CMD_WRONG;                                                           \
-    }                                                                                   \
-    SkipSpaces(fileToAssemble);                                                         \
-    SkipComments(fileToAssemble);                                                       \
-                                                                                        \
-    return CMD_OK;                                                                      \
+#define CMD_SET_CASE(CMD_NAME)                                                  \
+{                                                                               \
+    if (strcmp(cmdName, GET_NAME(CMD_NAME)) == 0)                               \
+    {                                                                           \
+        *cmdNameBuffer = CMD_NAME;                                              \
+        char argBuffer[maxCmdLength + 1] = {};                                  \
+        for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
+        {                                                                       \
+            cmdGetStatus = GetNextWord(fileToAssemble, argBuffer);              \
+            if (cmdGetStatus != CMD_OK)                                         \
+            {                                                                   \
+                ColoredPrintf(RED, "Wrong arguments of command %s.\n",          \
+                              GET_NAME(CMD_NAME));                              \
+                return cmdGetStatus;                                            \
+            }                                                                   \
+                                                                                \
+                                                                                \
+            if (!ConvertToInt(argBuffer, cmdArgvBuffer + argNum))               \
+                return CMD_WRONG;                                               \
+        }                                                                       \
+        SkipSpaces(fileToAssemble);                                             \
+        SkipComments(fileToAssemble);                                           \
+                                                                                \
+        return CMD_OK;                                                          \
+    }                                                                           \
 }
 
 
@@ -376,40 +380,29 @@ static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer,
     if (cmdGetStatus == CMD_NO)
         return CMD_NO;
 
-    if (strcmp(cmdName, GET_NAME(PUSH)) == 0)
-        CMD_SET(PUSH);
-
-    if (strcmp(cmdName, GET_NAME(ADD)) == 0)
-        CMD_SET(ADD);
-
-    if (strcmp(cmdName, GET_NAME(SUB)) == 0)
-        CMD_SET(SUB);
-
-    if (strcmp(cmdName, GET_NAME(DIV)) == 0)
-        CMD_SET(DIV);    
-
-    if (strcmp(cmdName, GET_NAME(MUL)) == 0)
-        CMD_SET(MUL);
-
-    if (strcmp(cmdName, GET_NAME(OUT)) == 0)
-        CMD_SET(OUT);
-
-    if (strcmp(cmdName, GET_NAME(IN)) == 0)
-        CMD_SET(IN);
+    CMD_SET_CASE(PUSH);
+    CMD_SET_CASE(ADD);
+    CMD_SET_CASE(SUB);
+    CMD_SET_CASE(DIV);    
+    CMD_SET_CASE(MUL);
+    CMD_SET_CASE(OUT);
+    CMD_SET_CASE(IN);
 
     ColoredPrintf(RED, "Command %s doesn't exist.\n", cmdName);
     return CMD_WRONG;
 }
-#undef CMD_SET
+#undef CMD_SET_CASE
 
 
-#define CMD_ASSEMBLED_WRITE(CMD_NAME)                                       \
-{                                                                           \
-    fprintf(assembledFile, "%d ", CMD_NAME);                                \
-    for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
-    {                                                                       \
-        fprintf(assembledFile, "%d ", cmdArgv[argNum]);                     \
-    }                                                                       \
+#define CMD_ASSEMBLED_WRITE_CASE(CMD_NAME)                                      \
+{                                                                               \
+    case CMD_NAME:                                                              \
+        fprintf(assembledFile, "%d ", CMD_NAME);                                \
+        for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
+        {                                                                       \
+            fprintf(assembledFile, "%d ", cmdArgv[argNum]);                     \
+        }                                                                       \
+        break;                                                                  \
 }
 
 
@@ -420,42 +413,23 @@ static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmdName, int* cmdAr
 
     switch (cmdName)
     {
-    case PUSH:
-        CMD_ASSEMBLED_WRITE(PUSH);
-        break;
-
-    case ADD:
-        CMD_ASSEMBLED_WRITE(ADD);
-        break;
-
-    case SUB:
-        CMD_ASSEMBLED_WRITE(SUB);
-        break;
-
-    case DIV:
-        CMD_ASSEMBLED_WRITE(DIV);
-        break;
-
-    case MUL:
-        CMD_ASSEMBLED_WRITE(MUL);
-        break;
-
-    case OUT:
-        CMD_ASSEMBLED_WRITE(OUT);
-        break;
-
-    case IN:
-        CMD_ASSEMBLED_WRITE(IN);
-        break;
+    CMD_ASSEMBLED_WRITE_CASE(PUSH);
+    CMD_ASSEMBLED_WRITE_CASE(ADD);
+    CMD_ASSEMBLED_WRITE_CASE(SUB);
+    CMD_ASSEMBLED_WRITE_CASE(DIV);
+    CMD_ASSEMBLED_WRITE_CASE(MUL);
+    CMD_ASSEMBLED_WRITE_CASE(OUT);
+    CMD_ASSEMBLED_WRITE_CASE(IN);
 
     case WRONG:
     default:
         LOG_PRINT(ERROR, "cmdName = %d\n", cmdName);
+        return false;
     }
 
     return true;
 }
-#undef CMD_ASSEMBLED_WRITE
+#undef CMD_ASSEMBLED_WRITE_CASE
 
 
 static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* wordBuffer)
