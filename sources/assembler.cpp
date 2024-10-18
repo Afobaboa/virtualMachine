@@ -26,7 +26,7 @@ typedef enum COMMAND_GET_STATUS cmdGetStatus_t;
 //----------------------------------------------------------------------------------------
 
 
-static size_t lineNum = 0;
+static size_t lineNum = 1;
 
 
 //----------------------------------------------------------------------------------------
@@ -340,8 +340,10 @@ static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode)
             cmdGetStatus = GetNextWord(assemblyCodePtr, argBuffer);             \
             if (cmdGetStatus != CMD_OK)                                         \
             {                                                                   \
-                ColoredPrintf(RED, "Wrong arguments of command %s.\n",          \
-                              GET_NAME(CMD_NAME));                              \
+                ColoredPrintf(RED, "Error in line %zu: "                        \
+                                   "wrong arguments of command %s.\n",          \
+                                    lineNum,                                    \
+                                    GET_NAME(CMD_NAME));                        \
                 return cmdGetStatus;                                            \
             }                                                                   \
                                                                                 \
@@ -366,7 +368,7 @@ static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer,
 
     if (cmdGetStatus == CMD_WRONG)
     {
-        ColoredPrintf(RED, "Wrong command name!\n");
+        ColoredPrintf(RED, "Error in line %zu: wrong command name!\n", lineNum);
         // LOG_PRINT(ERROR, "cmd <%s> is wrong.\n", cmdName);
         return CMD_WRONG;
     }
@@ -381,7 +383,8 @@ static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer,
     CMD_SET_CASE(OUT);
     CMD_SET_CASE(IN);
 
-    ColoredPrintf(RED, "Command %s doesn't exist.\n", cmdName);
+    ColoredPrintf(RED, "Error in line %zu: command %s doesn't exist.\n", 
+                        lineNum, cmdName);
     return CMD_WRONG;
 }
 #undef CMD_SET_CASE
@@ -491,6 +494,9 @@ static void SkipSpaces(char** contentPtr)
         
         if (nextChar == '\0')
             return;
+            
+        if (nextChar == '\n')
+            lineNum++;
 
         if (!IsSpace((char) nextChar))
             break;
@@ -512,7 +518,10 @@ static void SkipComments(char** contentPtr)
             (*contentPtr)++;
             nextChar = **contentPtr;
             if (nextChar == '\n')
+            {
+                lineNum++;
                 break;
+            }
         }
 }
 

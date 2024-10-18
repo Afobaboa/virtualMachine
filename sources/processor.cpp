@@ -89,8 +89,9 @@ bool ExecuteProgram(const char* programName)
 
 static void ProcessorInit(Processor* processor, const char* programName)
 {
-    FILE* executableFile = fopen(programName, "r");
-    fscanf(executableFile, "%zu", &(processor->machineCode.instructionCount));
+    FILE* executableFile = fopen(programName, "rb");
+    fread(&(processor->machineCode.instructionCount), 
+          sizeof(instruction_t), 1, executableFile);
     processor->machineCode.instructionNum = 0;
 
     const size_t instructionCount = processor->machineCode.instructionCount;
@@ -98,7 +99,8 @@ static void ProcessorInit(Processor* processor, const char* programName)
                                                           sizeof(instruction_t));
     for (size_t instructionNum = 0; instructionNum < instructionCount; instructionNum++)
     {
-        fscanf(executableFile, "%d", processor->machineCode.code + instructionNum);
+        fread(processor->machineCode.code + instructionNum,
+              sizeof(instruction_t), 1, executableFile);
     }
     fclose(executableFile);
 
@@ -169,7 +171,7 @@ static bool InstructionExecute(Processor* processor)
 static void DoPush(Processor* processor)
 {
     size_t instructionNum = processor->machineCode.instructionNum;
-    int pushedElem = processor->machineCode.code[instructionNum];
+    instruction_t pushedElem = processor->machineCode.code[instructionNum];
     processor->machineCode.instructionNum++;
     StackPush(processor->stack, &pushedElem);
 }
@@ -177,8 +179,8 @@ static void DoPush(Processor* processor)
 
 #define DO_OPERATION(operation)                                         \
 {                                                                       \
-    int firstPoppedElem  = 0;                                           \
-    int secondPoppedElem = 0;                                           \
+    instruction_t firstPoppedElem  = 0;                                 \
+    instruction_t secondPoppedElem = 0;                                 \
     if ((StackPop(processor->stack, &firstPoppedElem)  != OK) ||        \
         (StackPop(processor->stack, &secondPoppedElem) != OK))          \
     {                                                                   \
@@ -187,7 +189,7 @@ static void DoPush(Processor* processor)
         return;                                                         \
     }                                                                   \
                                                                         \
-    int result = firstPoppedElem operation secondPoppedElem;            \
+    instruction_t result = firstPoppedElem operation secondPoppedElem;  \
     StackPush(processor->stack, &result);                               \
 }
 
@@ -219,8 +221,8 @@ static void DoMul(Processor* processor)
 
 static bool DoIn(Processor* processor)
 {
-    int inputNum = 0;
-    if (scanf("%d", &inputNum) <= 0)
+    instruction_t inputNum = 0;
+    if (scanf("%zu", &inputNum) <= 0)
         return false;
 
     StackPush(processor->stack, &inputNum);
@@ -230,7 +232,7 @@ static bool DoIn(Processor* processor)
 
 static void DoOut(Processor* processor)
 {
-    int lastElem = 0;
+    instruction_t lastElem = 0;
     if (StackPop(processor->stack, &lastElem) != OK)
     {
         ColoredPrintf(RED, "OUT: POP ERROR\n");
