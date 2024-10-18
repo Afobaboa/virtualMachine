@@ -35,6 +35,7 @@ enum COMMAND_NAMES
     MUL,
     IN,
     OUT,
+    JMP,
     WRONG
 };
 typedef enum COMMAND_NAMES cmdName_t;

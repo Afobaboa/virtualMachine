@@ -65,6 +65,7 @@ static void DoDIV(Processor* processor);
 static void DoMUL(Processor* processor);
 static bool DoIN(Processor* processor);
 static void DoOUT(Processor* processor);
+static void DoJMP(Processor* processor);
 
 
 //----------------------------------------------------------------------------------------
@@ -143,6 +144,7 @@ static bool InstructionExecute(Processor* processor)
     DO_CMD_IN_CASE(MUL);
     DO_CMD_IN_CASE(DIV);
     DO_CMD_IN_CASE(OUT);
+    DO_CMD_IN_CASE(JMP);
 
     case IN:
         if (!DoIN(processor))
@@ -232,4 +234,11 @@ static void DoOUT(Processor* processor)
     }
 
     ColoredPrintf(YELLOW, "%d\n", lastElem);
+}
+
+static void DoJMP(Processor* processor)
+{
+    instruction_t instructionNum = processor->machineCode.instructionNum;
+    instruction_t instructionNumToJump = processor->machineCode.code[instructionNum];
+    processor->machineCode.instructionNum = instructionNumToJump;
 }
