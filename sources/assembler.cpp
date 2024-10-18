@@ -83,6 +83,7 @@ static void ChangeFileExtension(char* fileName, const char* prevExtension,
 static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode);
 
 
+// TODO: change docs
 /**
  * This function tries to get next command from fileToAssemble.
  * This function assumes cmdArgvBuffer is maxCmdArgc, check it yourself.
@@ -95,10 +96,11 @@ static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode);
  * @return CMD_NO if there are no commands left,
  * @return CMD_WRONG if next command's name of arguments are wrong.
  */
-static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer, 
-                                                   int*       cmdArgvBuffer);
+static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer, 
+                                                  int*       cmdArgvBuffer);
 
 
+// TODO: change docs
 /**
  * This function get next word from file with .asm commands.
  * Word is a set of chars which are not separated by cpases or comments.
@@ -112,9 +114,10 @@ static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer,
  * @return CMD_WRONG if word from fileGetFrom is too long. 
  *         Ptr to next char of fileGetFrom won't be set in start's position.
  */
-static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* wordBuffer);
+static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer);
 
 
+// TODO: change docs
 /**
  * This function will write assembled command (machine code of this command) 
  * to assembledFile.
@@ -126,7 +129,7 @@ static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* wordBuffer);
  * @return true if writing is comlete,
  * @return false else.
  */
-static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmdName, int* cmdArgv);
+static bool CmdAssembledWrite(MachineCode* machineCode, cmdName_t cmdName, int* cmdArgv);
 
 
 /** 
@@ -153,21 +156,23 @@ static bool IsSpace(char symbol);
 static bool IsCommentSymbol(char symbol);
 
 
+// TODO: change docs
 /**
  * This function skips next space symbols of file and move pointer to file's next char.
  * 
  * @param file Pointer to file.
  */
-static void SkipSpaces(FILE* file);
+static void SkipSpaces(char** contentPtr);
 
 
+// TODO: change docs
 /**
  * This function skips next comment line of file and 
  * move pointer to file's next char to next line.
  * 
  * @param file Pointer to file.
  */
-static void SkipComments(FILE* file);
+static void SkipComments(char** contentPtr);
 
 
 /**
@@ -303,16 +308,17 @@ static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode)
     cmdName_t cmdBuffer = WRONG;
     int cmdArgvBuffer[maxCmdArgc] = {};
     cmdGetStatus_t cmdGetStatus = CMD_OK;
+    // printf("assemblyCode = %p\n", assemblyCode);
 
     for (;;)
     {
-        cmdGetStatus = CmdGet(fileToAssemble, &cmdBuffer, cmdArgvBuffer);
+        cmdGetStatus = CmdGet(&assemblyCode, &cmdBuffer, cmdArgvBuffer);
 
         if (cmdGetStatus == CMD_NO)
             break;
 
         if ( cmdGetStatus == CMD_WRONG ||
-            !CmdAssembledWrite(assembledFile, cmdBuffer, cmdArgvBuffer))
+            !CmdAssembledWrite(machineCode, cmdBuffer, cmdArgvBuffer))
         {
             // LOG_PRINT(ERROR, "cmdGetStatus = %s", CmdGetStatusName(cmdGetStatus));
             return false;
@@ -331,7 +337,7 @@ static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode)
         char argBuffer[maxCmdLength + 1] = {};                                  \
         for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
         {                                                                       \
-            cmdGetStatus = GetNextWord(fileToAssemble, argBuffer);              \
+            cmdGetStatus = GetNextWord(assemblyCodePtr, argBuffer);             \
             if (cmdGetStatus != CMD_OK)                                         \
             {                                                                   \
                 ColoredPrintf(RED, "Wrong arguments of command %s.\n",          \
@@ -343,19 +349,19 @@ static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode)
             if (!ConvertToInt(argBuffer, cmdArgvBuffer + argNum))               \
                 return CMD_WRONG;                                               \
         }                                                                       \
-        SkipSpaces(fileToAssemble);                                             \
-        SkipComments(fileToAssemble);                                           \
+        SkipSpaces(assemblyCodePtr);                                            \
+        SkipComments(assemblyCodePtr);                                          \
                                                                                 \
         return CMD_OK;                                                          \
     }                                                                           \
 }
 
 
-static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer, 
-                                                   int*       cmdArgvBuffer)
+static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer, 
+                                                  int*       cmdArgvBuffer)
 {
     char cmdName[maxCmdLength + 1] = {};
-    cmdGetStatus_t cmdGetStatus = GetNextWord(fileToAssemble, cmdName);
+    cmdGetStatus_t cmdGetStatus = GetNextWord(assemblyCodePtr, cmdName);
     // LOG_PRINT(INFO, "cmdName = <%s>.\n", cmdName);
 
     if (cmdGetStatus == CMD_WRONG)
@@ -384,18 +390,20 @@ static cmdGetStatus_t CmdGet(FILE* fileToAssemble, cmdName_t* cmdNameBuffer,
 #define CMD_ASSEMBLED_WRITE_CASE(CMD_NAME)                                      \
 {                                                                               \
     case CMD_NAME:                                                              \
-        fprintf(assembledFile, "%d ", CMD_NAME);                                \
+        machineCode->code[machineCode->instructionNum] = CMD_NAME;              \
+        machineCode->instructionNum++;                                          \
         for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
         {                                                                       \
-            fprintf(assembledFile, "%d ", cmdArgv[argNum]);                     \
+            machineCode->code[machineCode->instructionNum] = cmdArgv[argNum];   \
+            machineCode->instructionNum++;                                      \
         }                                                                       \
         break;                                                                  \
 }
 
 
-static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmdName, int* cmdArgv)
+static bool CmdAssembledWrite(MachineCode* machineCode, cmdName_t cmdName, int* cmdArgv)
 {
-    if (assembledFile == NULL || cmdArgv == NULL)
+    if (machineCode == NULL || cmdArgv == NULL)
         return false;
 
     switch (cmdName)
@@ -419,15 +427,17 @@ static bool CmdAssembledWrite(FILE* assembledFile, cmdName_t cmdName, int* cmdAr
 #undef CMD_ASSEMBLED_WRITE_CASE
 
 
-static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* wordBuffer)
+static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer)
 {
-    SkipSpaces(fileGetFrom);
+    SkipSpaces(contentPtr);
 
     int nextChar = 0;
     for (size_t charNum = 0; charNum < maxCmdLength; charNum++)
     {
-        nextChar = fgetc(fileGetFrom);
-        if (nextChar == EOF)
+        // printf("contentPtr = %p\n", contentPtr);
+        // printf("content = %p\n", *contentPtr);
+        nextChar = **contentPtr;
+        if (nextChar == '\0')
         {
             if (charNum == 0)
                 return CMD_NO;
@@ -436,22 +446,18 @@ static cmdGetStatus_t GetNextWord(FILE* fileGetFrom, char* wordBuffer)
         }
 
         if (IsSpace((char) nextChar) || IsCommentSymbol((char) nextChar))
-        {
-            ungetc(nextChar, fileGetFrom);
             break;
-        }
 
         wordBuffer[charNum] = (char) nextChar;
+        (*contentPtr)++;
     }
 
-    nextChar = fgetc(fileGetFrom);
-    if (nextChar != EOF && !IsSpace((char) nextChar) && !IsCommentSymbol((char) nextChar))
+    nextChar = **contentPtr;
+    if (nextChar != '\0' && !IsSpace((char) nextChar) && !IsCommentSymbol((char) nextChar))
     {
         // LOG_PRINT(INFO, "cmd = <%s>, nextChar = %d\n", cmdNameBuffer, nextChar);
-        ungetc(nextChar, fileGetFrom);
         return CMD_WRONG;
     }
-    ungetc(nextChar, fileGetFrom);
     wordBuffer[maxCmdLength] = '\0';
 
     return CMD_OK;
@@ -476,39 +482,38 @@ static bool IsCommentSymbol(char symbol)
 }
 
 
-static void SkipSpaces(FILE* file)
+static void SkipSpaces(char** contentPtr)
 {
     int nextChar = 0;
     for (;;)
     {
-        nextChar = fgetc(file);
+        nextChar = **contentPtr;
         
-        if (nextChar == EOF)
+        if (nextChar == '\0')
             return;
 
         if (!IsSpace((char) nextChar))
             break;
+
+        (*contentPtr)++;
     }
-    ungetc(nextChar, file);
 }
 
 
-static void SkipComments(FILE* file)
+static void SkipComments(char** contentPtr)
 {
-    int nextChar = fgetc(file);
-    if (nextChar == EOF)
+    int nextChar = **contentPtr;
+    if (nextChar == '\0')
         return;
 
     if (IsCommentSymbol((char) nextChar))
         for (;;)
         {
-            nextChar = fgetc(file);
+            (*contentPtr)++;
+            nextChar = **contentPtr;
             if (nextChar == '\n')
                 break;
         }
-    
-    else    
-        ungetc(nextChar, file);
 }
 
 
@@ -655,11 +660,12 @@ static char* FileGetContent(const char* fileName)
     size_t charCount = 0;
     if (!GetFileSize(file, &charCount))
         return NULL;
+    // printf("charCount = %zu\n", charCount);
                                             // +1 for make contentBuffer null-terminated
     char* contentBuffer = (char*) calloc(charCount + 1, sizeof(char));
     if (contentBuffer == NULL)
         return NULL;
 
     fread(contentBuffer, sizeof(char), charCount, file);
-    return contentBuffer
+    return contentBuffer;
 }
