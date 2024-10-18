@@ -58,13 +58,13 @@ static bool InstructionExecute(Processor* processor);
 
 
 
-static void DoPush(Processor* processor);
-static void DoAdd(Processor* processor);
-static void DoSub(Processor* processor);
-static void DoDiv(Processor* processor);
-static void DoMul(Processor* processor);
-static bool DoIn(Processor* processor);
-static void DoOut(Processor* processor);
+static void DoPUSH(Processor* processor);
+static void DoADD(Processor* processor);
+static void DoSUB(Processor* processor);
+static void DoDIV(Processor* processor);
+static void DoMUL(Processor* processor);
+static bool DoIN(Processor* processor);
+static void DoOUT(Processor* processor);
 
 
 //----------------------------------------------------------------------------------------
@@ -121,6 +121,14 @@ static void ProcessorDelete(Processor* processor)
 }
 
 
+#define DO_CMD_IN_CASE(CMD_NAME) \
+{   \
+    case CMD_NAME: \
+        Do##CMD_NAME(processor); \
+        break; \
+}
+
+
 static bool InstructionExecute(Processor* processor)
 {
     size_t instructionNum =processor->machineCode.instructionNum;
@@ -129,33 +137,16 @@ static bool InstructionExecute(Processor* processor)
 
     switch (cmdName)
     {
-    case PUSH:
-        DoPush(processor);
-        break;
-
-    case ADD:
-        DoAdd(processor);
-        break;
-    
-    case SUB:
-        DoSub(processor);
-        break;
-
-    case DIV:
-        DoDiv(processor);
-        break;
-
-    case MUL:
-        DoMul(processor);
-        break;
+    DO_CMD_IN_CASE(PUSH);
+    DO_CMD_IN_CASE(ADD);
+    DO_CMD_IN_CASE(SUB);
+    DO_CMD_IN_CASE(MUL);
+    DO_CMD_IN_CASE(DIV);
+    DO_CMD_IN_CASE(OUT);
 
     case IN:
-        if (!DoIn(processor))
+        if (!DoIN(processor))
             return false;
-        break;
-
-    case OUT:
-        DoOut(processor);
         break;
 
     case WRONG:
@@ -166,9 +157,10 @@ static bool InstructionExecute(Processor* processor)
 
     return true;
 }
+#undef DO_CMD_IN_CASE
 
 
-static void DoPush(Processor* processor)
+static void DoPUSH(Processor* processor)
 {
     size_t instructionNum = processor->machineCode.instructionNum;
     instruction_t pushedElem = processor->machineCode.code[instructionNum];
@@ -194,32 +186,32 @@ static void DoPush(Processor* processor)
 }
 
 
-static void DoAdd(Processor* processor)
+static void DoADD(Processor* processor)
 {
     DO_OPERATION(+);
 }
 
 
-static void DoSub(Processor* processor)
+static void DoSUB(Processor* processor)
 {
     DO_OPERATION(-);
 }
 
 
-static void DoDiv(Processor* processor)
+static void DoDIV(Processor* processor)
 {
     DO_OPERATION(/);
 }
 
 
-static void DoMul(Processor* processor)
+static void DoMUL(Processor* processor)
 {
     DO_OPERATION(*);
 }
 #undef DO_OPERATION
 
 
-static bool DoIn(Processor* processor)
+static bool DoIN(Processor* processor)
 {
     instruction_t inputNum = 0;
     if (scanf("%zu", &inputNum) <= 0)
@@ -230,7 +222,7 @@ static bool DoIn(Processor* processor)
 }
 
 
-static void DoOut(Processor* processor)
+static void DoOUT(Processor* processor)
 {
     instruction_t lastElem = 0;
     if (StackPop(processor->stack, &lastElem) != OK)
