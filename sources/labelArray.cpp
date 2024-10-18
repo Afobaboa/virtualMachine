@@ -132,6 +132,15 @@ bool LabelFind(LabelArray* labelArray, char* labelName, size_t* instructionNumBu
 }
 
 
+bool LabelIs(char* labelName) 
+{
+    if (labelName[strlen(labelName) - 1] == ':')
+        return true;
+    
+    return false;
+}
+
+
 //----------------------------------------------------------------------------------------
 
 

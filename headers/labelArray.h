@@ -54,6 +54,9 @@ bool LabelAdd(LabelArray* labelArray, char* labelName, const size_t instructionN
 bool LabelFind(LabelArray* labelArray, char* labelName, size_t* instructionNumBuffer);
 
 
+bool LabelIs(char* labelName);
+
+
 //----------------------------------------------------------------------------------------
 
 
