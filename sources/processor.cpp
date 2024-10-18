@@ -77,8 +77,11 @@ bool ExecuteProgram(const char* programName)
     ProcessorInit(&processor, programName);
 
     while (processor.machineCode.instructionNum < processor.machineCode.instructionCount)
+    {
+        // printf("%zu\n", processor.machineCode.instructionNum);
         if (!InstructionExecute(&processor))
             return false;
+    }
 
     ProcessorDelete(&processor);
     return true;
@@ -241,4 +244,6 @@ static void DoJMP(Processor* processor)
     instruction_t instructionNum = processor->machineCode.instructionNum;
     instruction_t instructionNumToJump = processor->machineCode.code[instructionNum];
     processor->machineCode.instructionNum = instructionNumToJump;
+    // ColoredPrintf(RED, "instructionNum after JMP is %zu\n",
+    //               processor->machineCode.instructionNum);
 }

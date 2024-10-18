@@ -5,6 +5,7 @@
 
 #include "assembler.h"
 #include "processor.h"
+#include "labelArray.h"
 #include "logPrinter.h"
 
 
@@ -18,7 +19,8 @@ enum COMMAND_GET_STATUS
 {
     CMD_OK,         /**< Next command is readed.                  */
     CMD_NO,         /**< There are no commands left in .asm file. */
-    CMD_WRONG       /**< Command doesn't exist.                   */
+    CMD_WRONG,      /**< Command doesn't exist.                   */
+    CMD_LABEL
 };
 typedef enum COMMAND_GET_STATUS cmdGetStatus_t;
 
@@ -80,7 +82,8 @@ static void ChangeFileExtension(char* fileName, const char* prevExtension,
  *         If you find any detected error the information about this isn't printed to
  *         terminal, make issue about it on github.com/Afobaboa/virtualMachine .
  */
-static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode);
+static bool AssembleCmds(char* assemblyCode, 
+                         MachineCode* machineCode, LabelArray* labelArray);
 
 
 // TODO: change docs
@@ -97,7 +100,7 @@ static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode);
  * @return CMD_WRONG if next command's name of arguments are wrong.
  */
 static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer, 
-                                                  int*       cmdArgvBuffer);
+                             int* cmdArgvBuffer, LabelArray* labelArray);
 
 
 // TODO: change docs
@@ -219,6 +222,10 @@ static bool MachineCodeWriteToFile(MachineCode* machineCode, char* fileName);
 static char* FileGetContent(const char* fileName);
 
 
+static cmdGetStatus_t JumpSetAddress(char** assemblyCode, int* argvBuffer, 
+                                     LabelArray* labelArray);
+
+
 //----------------------------------------------------------------------------------------
 
 
@@ -249,7 +256,20 @@ bool Assemble(const char* fileName)
                                .code = NULL};
     machineCode.code = (instruction_t*) calloc(machineCode.instructionCount, 
                                                sizeof(instruction_t));
-    bool assemblingResult = AssembleCmds(fileToAssembleContent, &machineCode);
+
+    LabelArray labelArray = {};
+    if (!LABEL_ARRAY_CREATE(&labelArray))
+    {
+        ColoredPrintf(RED, "Can't create label array.\n");
+        return false;
+    }
+
+    AssembleCmds(fileToAssembleContent, &machineCode, &labelArray);
+    machineCode.instructionNum = 0;
+    lineNum = 1;
+
+    bool assemblingResult = AssembleCmds(fileToAssembleContent, 
+                                         &machineCode, &labelArray);
     machineCode.instructionCount = machineCode.instructionNum; // For correct writing to file
 
     const size_t nameLength = strlen(fileName);
@@ -265,6 +285,7 @@ bool Assemble(const char* fileName)
     if (assemblingResult)
         assemblingResult = MachineCodeWriteToFile(&machineCode, assembledFileName);
 
+    LabelArrayDelete(&labelArray);
     free(machineCode.code);
     free(fileToAssembleContent);
     free(assembledFileName);
@@ -303,7 +324,8 @@ static void ChangeFileExtension(char* fileName, const char* prevExtension,
 }
 
 
-static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode)
+static bool AssembleCmds(char* assemblyCode, 
+                         MachineCode* machineCode, LabelArray* labelArray)
 {
     cmdName_t cmdBuffer = WRONG;
     int cmdArgvBuffer[maxCmdArgc] = {};
@@ -312,10 +334,13 @@ static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode)
 
     for (;;)
     {
-        cmdGetStatus = CmdGet(&assemblyCode, &cmdBuffer, cmdArgvBuffer);
+        cmdGetStatus = CmdGet(&assemblyCode, &cmdBuffer, cmdArgvBuffer, labelArray);
 
         if (cmdGetStatus == CMD_NO)
             break;
+
+        if (cmdGetStatus == CMD_LABEL)
+            continue;
 
         if ( cmdGetStatus == CMD_WRONG ||
             !CmdAssembledWrite(machineCode, cmdBuffer, cmdArgvBuffer))
@@ -347,7 +372,6 @@ static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode)
                 return cmdGetStatus;                                            \
             }                                                                   \
                                                                                 \
-                                                                                \
             if (!ConvertToInt(argBuffer, cmdArgvBuffer + argNum))               \
                 return CMD_WRONG;                                               \
         }                                                                       \
@@ -360,7 +384,7 @@ static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode)
 
 
 static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer, 
-                                                  int*       cmdArgvBuffer)
+                             int* cmdArgvBuffer, LabelArray* labelArray)
 {
     char cmdName[maxCmdLength + 1] = {};
     cmdGetStatus_t cmdGetStatus = GetNextWord(assemblyCodePtr, cmdName);
@@ -375,6 +399,9 @@ static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer,
     if (cmdGetStatus == CMD_NO)
         return CMD_NO;
 
+    if (LabelIs(cmdName))
+        return CMD_LABEL;
+
     CMD_SET_CASE(PUSH);
     CMD_SET_CASE(ADD);
     CMD_SET_CASE(SUB);
@@ -382,6 +409,14 @@ static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer,
     CMD_SET_CASE(MUL);
     CMD_SET_CASE(OUT);
     CMD_SET_CASE(IN);
+
+    if (strcmp(cmdName, "JMP") == 0)
+    {
+        *cmdNameBuffer = JMP;
+        if (JumpSetAddress(assemblyCodePtr, cmdArgvBuffer, labelArray) != CMD_OK)
+            return CMD_WRONG;
+        return CMD_OK;
+    }
 
     ColoredPrintf(RED, "Error in line %zu: command %s doesn't exist.\n", 
                         lineNum, cmdName);
@@ -418,6 +453,7 @@ static bool CmdAssembledWrite(MachineCode* machineCode, cmdName_t cmdName, int* 
     CMD_ASSEMBLED_WRITE_CASE(MUL);
     CMD_ASSEMBLED_WRITE_CASE(OUT);
     CMD_ASSEMBLED_WRITE_CASE(IN);
+    CMD_ASSEMBLED_WRITE_CASE(JMP);
 
     case WRONG:
     default:
@@ -461,7 +497,7 @@ static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer)
         // LOG_PRINT(INFO, "cmd = <%s>, nextChar = %d\n", cmdNameBuffer, nextChar);
         return CMD_WRONG;
     }
-    wordBuffer[maxCmdLength] = '\0';
+    // wordBuffer[maxCmdLength] = '\0';
 
     return CMD_OK;
 }
@@ -677,4 +713,26 @@ static char* FileGetContent(const char* fileName)
 
     fread(contentBuffer, sizeof(char), charCount, file);
     return contentBuffer;
+}
+
+
+static cmdGetStatus_t JumpSetAddress(char** assemblyCode, int* argvBuffer, 
+                                     LabelArray* labelArray)
+{
+    char labelName[maxLabelNameLength] = {};
+    GetNextWord(assemblyCode, labelName);
+    if (!LabelIs(labelName))
+        return CMD_WRONG;
+
+    size_t instructionNum = 0;
+    LabelFind(labelArray, labelName, &instructionNum);
+    if (instructionNum == labelPoisonNum)
+    {
+        LabelAdd(labelArray, labelName, instructionNum);
+        return CMD_WRONG;
+    }
+
+    argvBuffer[0] = instructionNum;
+    
+    return CMD_OK;
 }
