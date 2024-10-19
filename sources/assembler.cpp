@@ -4,8 +4,8 @@
 #include <string.h>
 
 #include "assembler.h"
-#include "processor.h"
 #include "virtualMachine.h"
+#include "machineCode.h"
 #include "labelArray.h"
 #include "logPrinter.h"
 

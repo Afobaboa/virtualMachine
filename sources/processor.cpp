@@ -5,6 +5,7 @@
 
 #include "processor.h"
 #include "virtualMachine.h"
+#include "machineCode.h"
 #include "logPrinter.h"
 #include "stack.h"
 
