@@ -39,6 +39,8 @@ typedef enum CODE_STATUSES codeStatus_t;
 
 const size_t FIRST_INSTRUCTION_NUM = 0;
 
+const char* const MACHINE_CODE_FILE_EXTENSION = ".vm";
+
 
 //--------------------------------------------------------------------------------------------------
 
