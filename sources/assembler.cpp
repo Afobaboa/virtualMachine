@@ -146,7 +146,8 @@ bool Assemble(const char* fileName)
     bool assemblingResult = AssembleCmds(fileToAssembleContent, &machineCode, &labelArray);
 
     char* assembledFileName = NULL;
-    if (!FileNameChangeExtension((char*) fileName, &assembledFileName, ".asm", ".vm"))
+    if (!FileNameChangeExtension((char*) fileName, &assembledFileName, ".asm", 
+                                                                    MACHINE_CODE_FILE_EXTENSION))
     {
         ColoredPrintf(RED, "Can't set assembledFileName.\n");
         MachineCodeDelete(&machineCode);

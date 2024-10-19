@@ -66,7 +66,7 @@ bool FileGetSize(char* fileName, size_t* sizeBuffer)
     if (stat(fileName, &fileStat) == -1)
         return false;
 
-    *sizeBuffer = fileStat.st_size;
+    *sizeBuffer = (size_t) fileStat.st_size;
 
     return true;
 }
@@ -78,8 +78,8 @@ bool FileGetContent(const char* fileName, char** contentBufferPtr)
     if (!FileGetSize((char*) fileName, &charCount))
         return NULL;
                                             // +1 for make contentBuffer null-terminated
-    char* contentBuffer = (char*) calloc(charCount + 1, sizeof(char));
-    if (contentBuffer == NULL)
+    *contentBufferPtr = (char*) calloc(charCount + 1, sizeof(char));
+    if (*contentBufferPtr == NULL)
         return false;;
 
     FILE* file = fopen(fileName, "rb");
@@ -89,5 +89,5 @@ bool FileGetContent(const char* fileName, char** contentBufferPtr)
     fread(*contentBufferPtr, sizeof(char), charCount, file);
 
     fclose(file);
-    return contentBuffer;
+    return true;
 }

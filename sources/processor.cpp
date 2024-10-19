@@ -23,28 +23,11 @@ struct Registers64
 };
 
 
-typedef uint32_t register32_t;
-struct Registers32
-{
-    register32_t eax;
-    register32_t ebx;
-    register32_t ecx;
-    register32_t edx;
-};
-
-
-struct Registers
-{
-    Registers64 register64;
-    Registers32 register32;
-};
-
-
 struct Processor
 {
     MachineCode machineCode;
     Stack* stack;
-    Registers registers;
+    Registers64 registers;
 };
 
 
@@ -99,34 +82,16 @@ bool ExecuteProgram(const char* programName)
 
 static void ProcessorInit(Processor* processor, const char* programName)
 {
-    FILE* executableFile = fopen(programName, "rb");
-    fread(&(processor->machineCode.instructionCount), 
-          sizeof(instruction_t), 1, executableFile);
-    processor->machineCode.instructionNum = 0;
-
-    const size_t instructionCount = processor->machineCode.instructionCount;
-    processor->machineCode.code = (instruction_t*) calloc(instructionCount,
-                                                          sizeof(instruction_t));
-    for (size_t instructionNum = 0; instructionNum < instructionCount; instructionNum++)
-    {
-        fread(processor->machineCode.code + instructionNum,
-              sizeof(instruction_t), 1, executableFile);
-    }
-    fclose(executableFile);
-
+    MachineCodeInitFromFile(&(processor->machineCode), (char*) programName);
+    processor->registers = {};
     STACK_CREATE(processor->stack, sizeof(instruction_t));
 }
 
 
 static void ProcessorDelete(Processor* processor)
 {
-    free(processor->machineCode.code);
-
-    processor->machineCode.instructionCount = 0;
-    processor->machineCode.instructionNum   = 0;
-    processor->machineCode.code             = NULL;
-    processor->registers                    = {};
-
+    processor->registers = {};
+    MachineCodeDelete(&(processor->machineCode));
     StackDelete(&(processor->stack));
 }
 
@@ -141,9 +106,8 @@ static void ProcessorDelete(Processor* processor)
 
 static bool InstructionExecute(Processor* processor)
 {
-    size_t instructionNum =processor->machineCode.instructionNum;
-    cmdName_t cmdName = (cmdName_t) processor->machineCode.code[instructionNum];
-    processor->machineCode.instructionNum++;
+    instruction_t cmdName = 0;
+    MachineCodeGetNextInstruction(&(processor->machineCode), &cmdName);
 
     switch (cmdName)
     {
@@ -173,10 +137,9 @@ static bool InstructionExecute(Processor* processor)
 
 static void DoPUSH(Processor* processor)
 {
-    size_t instructionNum = processor->machineCode.instructionNum;
-    instruction_t pushedElem = processor->machineCode.code[instructionNum];
-    processor->machineCode.instructionNum++;
-    StackPush(processor->stack, &pushedElem);
+    instruction_t elemToPush = 0;
+    MachineCodeGetNextInstruction(&(processor->machineCode), &elemToPush);
+    StackPush(processor->stack, &elemToPush);
 }
 
 
@@ -247,9 +210,7 @@ static void DoOUT(Processor* processor)
 
 static void DoJMP(Processor* processor)
 {
-    instruction_t instructionNum = processor->machineCode.instructionNum;
-    instruction_t instructionNumToJump = processor->machineCode.code[instructionNum];
-    processor->machineCode.instructionNum = instructionNumToJump;
-    // ColoredPrintf(RED, "instructionNum after JMP is %zu\n",
-    //               processor->machineCode.instructionNum);
+    instruction_t instructionNum = 0;
+    MachineCodeGetNextInstruction(&(processor->machineCode), &instructionNum);
+    MachineCodeJump(&(processor->machineCode), instructionNum);
 }
