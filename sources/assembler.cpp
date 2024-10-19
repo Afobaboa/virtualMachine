@@ -17,23 +17,37 @@
 /**
  * This statuses are used in functions which are trying to get command from .asm file.
  */
-enum COMMAND_GET_STATUS
+enum COMMAND_STATUS
 {
     CMD_OK,         /**< Next command is readed.                  */
     CMD_NO,         /**< There are no commands left in .asm file. */
     CMD_WRONG,      /**< Command doesn't exist.                   */
     CMD_LABEL
 };
-typedef enum COMMAND_GET_STATUS cmdGetStatus_t;
+typedef enum COMMAND_STATUS cmdStatus_t;
 
 
 //--------------------------------------------------------------------------------------------------
 
 
-static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode, LabelArray* labelArray);
+struct Assembler
+{
+    char* assemblyCode;
+    MachineCode machineCode;
+    LabelArray labelArray;
+    size_t lineNum;
+};
+
+const size_t FIRST_LINE = 1;
 
 
-static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer, size_t* lineNum);
+//--------------------------------------------------------------------------------------------------
+
+
+static bool AssembleCmds(Assembler* assembler);
+
+
+static cmdStatus_t GetNextWord(char** contentPtr, char* wordBuffer, size_t* lineNum);
 
 
 /** 
@@ -81,22 +95,34 @@ static bool ConvertToInt(char* string, int* intBuffer);
 
 
 /** 
- * This function convert cmdGetStatus to string with the same name (CMD_OK will be 
+ * This function convert cmdStatus to string with the same name (CMD_OK will be 
  * converted to "CMD_OK"). This function may be usefull for debugging.
  * 
- * @param cmdGetStatus Your cmdGetStatus you want to know.
+ * @param cmdStatus Your cmdStatus you want to know.
  * 
- * @return Name of cmdGetStatus. If it isn't exist, that will contains in returned string.
+ * @return Name of cmdStatus. If it isn't exist, that will contains in returned string.
  */
-static const char* CmdGetStatusName(cmdGetStatus_t cmdGetStatus);
+static const char* CmdStatusName(cmdStatus_t cmdStatus);
 
 
-static cmdGetStatus_t JumpSetAddress(char** assemblyCode, size_t* jumpInstructionNumBuffer, 
+static cmdStatus_t JumpSetAddress(char** assemblyCode, size_t* jumpInstructionNumBuffer, 
                                      LabelArray* labelArray, size_t* lineNum);
 
 
-static cmdGetStatus_t CmdNextGetAndWrite(char** assemblyCodePtr, MachineCode* machineCode, 
+static cmdStatus_t CmdNextGetAndWrite(char** assemblyCodePtr, MachineCode* machineCode, 
                                          LabelArray* labelArray, size_t* lineNum);
+
+
+static bool AssemblerInit(Assembler* assembler, const char* fileToAssembleName, Place place);
+
+#define ASSEMBLER_INIT(assembler, fileToAssemble) \
+    AssemblerInit(assembler, fileToAssemble, GET_PLACE())
+
+
+static void AssemblerCodeRewind(Assembler* assembler);
+
+
+static void AssemblerDelete(Assembler* assembler);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -115,50 +141,29 @@ bool Assemble(const char* fileName)
         return false;
     }
 
-    MachineCode machineCode = {};
-    if (!MachineCodeInit(&machineCode))
+    Assembler assembler = {};
+    if (!ASSEMBLER_INIT(&assembler, fileName))
     {
-        ColoredPrintf(RED, "Can't init machine code.\n");
-        return false;
-    }
-    LabelArray labelArray = {};
-    if (!LABEL_ARRAY_CREATE(&labelArray))
-    {
-        ColoredPrintf(RED, "Can't create label array.\n");
-        MachineCodeDelete(&machineCode);
-        return false;
-    }
-    char* fileToAssembleContent = NULL;
-    if (!FileGetContent(fileName, &fileToAssembleContent))
-    {
-        ColoredPrintf(RED, "Assembler error: can't read content of %s.\n", fileName);
-        MachineCodeDelete(&machineCode);
-        LabelArrayDelete(&labelArray);
+        ColoredPrintf(RED, "Can't init assembler.\n");
         return false;
     }
 
-    LABEL_ARRAY_DUMP(&labelArray);
-    AssembleCmds(fileToAssembleContent, &machineCode, &labelArray);
-    LABEL_ARRAY_DUMP(&labelArray);
-    MachineCodeJump(&machineCode, JUMP_ABSOLUTE, FIRST_INSTRUCTION_NUM);
-    bool assemblingResult = AssembleCmds(fileToAssembleContent, &machineCode, &labelArray);
-    LABEL_ARRAY_DUMP(&labelArray);
+    AssembleCmds(&assembler);
+    MachineCodeJump(&(assembler.machineCode), JUMP_ABSOLUTE, FIRST_INSTRUCTION_NUM);
+    AssemblerCodeRewind(&assembler);
+    bool assemblingResult = AssembleCmds(&assembler);
 
     char* assembledFileName = NULL;
     if (!FileNameChangeExtension((char*) fileName, &assembledFileName, ".asm", 
                                                                     MACHINE_CODE_FILE_EXTENSION))
     {
         ColoredPrintf(RED, "Can't set assembledFileName.\n");
-        MachineCodeDelete(&machineCode);
-        LabelArrayDelete(&labelArray);
-        free(fileToAssembleContent);
+        AssemblerDelete(&assembler);
         return false;
     }
-    assemblingResult = MachineCodeWriteToFile(&machineCode, assembledFileName);
+    assemblingResult = MachineCodeWriteToFile(&(assembler.machineCode), assembledFileName);
 
-    MachineCodeDelete(&machineCode);
-    LabelArrayDelete(&labelArray);
-    free(fileToAssembleContent);
+    AssemblerDelete(&assembler);
     free(assembledFileName);
     return assemblingResult;
 }
@@ -167,19 +172,65 @@ bool Assemble(const char* fileName)
 //--------------------------------------------------------------------------------------------------
 
 
-static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode, LabelArray* labelArray)
+static bool AssemblerInit(Assembler* assembler, const char* fileToAssembleName, Place place)
+{
+    if (!MachineCodeInit(&(assembler->machineCode)))
+    {
+        LOG_PRINT_WITH_PLACE(ERROR, place, "Can't init machine code.\n");
+        return false;
+    }
+
+    if (!LABEL_ARRAY_CREATE(&(assembler->labelArray)))
+    {
+        LOG_PRINT_WITH_PLACE(ERROR, place, "Can't create label array.\n");
+        MachineCodeDelete(&(assembler->machineCode));
+        return false;
+    }
+
+    if (!FileGetContent(fileToAssembleName, &(assembler->assemblyCode)))
+    {
+        LOG_PRINT_WITH_PLACE(ERROR, place, "Assembler error: can't read content of %s.\n", 
+                             fileToAssembleName);
+        MachineCodeDelete(&(assembler->machineCode));
+        LabelArrayDelete(&(assembler->labelArray));
+        return false;
+    }
+
+    assembler->lineNum = FIRST_LINE;
+    return true;
+}
+
+
+static void AssemblerCodeRewind(Assembler* assembler)
+{
+    assembler->lineNum = FIRST_LINE;
+}
+
+
+static void AssemblerDelete(Assembler* assembler)
+{
+    free(assembler->assemblyCode);
+    assembler->assemblyCode = NULL;
+
+    MachineCodeDelete(&(assembler->machineCode));
+    LabelArrayDelete(&(assembler->labelArray));
+    assembler->lineNum = 0;
+}
+
+
+static bool AssembleCmds(Assembler* assembler)
 {
     size_t lineNum = 1;
-    cmdGetStatus_t cmdGetStatus = CMD_WRONG;
+    cmdStatus_t cmdStatus = CMD_WRONG;
 
     for (;;)
     {
-        cmdGetStatus = CmdNextGetAndWrite(&assemblyCode, machineCode, labelArray, &lineNum);
+        cmdStatus = CmdNextGetAndWrite(&assemblyCode, machineCode, labelArray, &lineNum);
 
-        if (cmdGetStatus == CMD_NO)
+        if (cmdStatus == CMD_NO)
             break;
 
-        if (cmdGetStatus == CMD_WRONG)
+        if (cmdStatus == CMD_WRONG)
             return false;
     }
 
@@ -187,7 +238,7 @@ static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode, LabelArra
 }
 
 
-static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer, size_t* lineNum)
+static cmdStatus_t GetNextWord(char** contentPtr, char* wordBuffer, size_t* lineNum)
 {
     SkipSpaces(contentPtr, lineNum);
 
@@ -304,9 +355,9 @@ static bool ConvertToInt(char* string, int* intBuffer)
 }
 
 
-static const char* CmdGetStatusName(cmdGetStatus_t cmdGetStatus)
+static const char* CmdStatusName(cmdStatus_t cmdStatus)
 {
-    switch (cmdGetStatus)
+    switch (cmdStatus)
     {
     case CMD_OK:
         return GET_NAME(CMD_OK);
@@ -322,13 +373,13 @@ static const char* CmdGetStatusName(cmdGetStatus_t cmdGetStatus)
 
     default:
         char* errorMessage = (char*) calloc (64, sizeof(char));
-        sprintf(errorMessage, "cmdGetStatus %d doesn't exist.\n", cmdGetStatus);
+        sprintf(errorMessage, "cmdStatus %d doesn't exist.\n", cmdStatus);
         return errorMessage;
     }
 }
 
 
-static cmdGetStatus_t JumpSetAddress(char** assemblyCode, size_t* jumpInstructionNumBuffer, 
+static cmdStatus_t JumpSetAddress(char** assemblyCode, size_t* jumpInstructionNumBuffer, 
                                      LabelArray* labelArray, size_t* lineNum)
 {
     char labelName[maxLabelNameLength] = {};
@@ -361,14 +412,14 @@ static cmdGetStatus_t JumpSetAddress(char** assemblyCode, size_t* jumpInstructio
         char argBuffer[MAX_CMD_LENGTH + 1] = {};                                \
         for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
         {                                                                       \
-            cmdGetStatus = GetNextWord(assemblyCodePtr, argBuffer, lineNum);    \
-            if (cmdGetStatus != CMD_OK)                                         \
+            cmdStatus = GetNextWord(assemblyCodePtr, argBuffer, lineNum);    \
+            if (cmdStatus != CMD_OK)                                         \
             {                                                                   \
                 ColoredPrintf(RED, "Error in line %zu: "                        \
                                    "wrong arguments of command %s.\n",          \
                                     *lineNum,                                   \
                                     GET_NAME(CMD_NAME));                        \
-                return cmdGetStatus;                                            \
+                return cmdStatus;                                            \
             }                                                                   \
                                                                                 \
             if (!ConvertToInt(argBuffer, (int*) (argvBuffer + argNum)))         \
@@ -384,20 +435,20 @@ static cmdGetStatus_t JumpSetAddress(char** assemblyCode, size_t* jumpInstructio
 }
 
 
-static cmdGetStatus_t CmdNextGetAndWrite(char** assemblyCodePtr, MachineCode* machineCode, 
+static cmdStatus_t CmdNextGetAndWrite(char** assemblyCodePtr, MachineCode* machineCode, 
                                          LabelArray* labelArray, size_t* lineNum)
 {
     char cmdName[MAX_CMD_LENGTH + 1] = {};
-    cmdGetStatus_t cmdGetStatus = GetNextWord(assemblyCodePtr, cmdName, lineNum);
+    cmdStatus_t cmdStatus = GetNextWord(assemblyCodePtr, cmdName, lineNum);
     // LOG_PRINT(INFO, "cmdName = <%s>.\n", cmdName);
 
-    if (cmdGetStatus == CMD_WRONG)
+    if (cmdStatus == CMD_WRONG)
     {
         ColoredPrintf(RED, "Error in line %zu: wrong command name!\n", *lineNum);
         // LOG_PRINT(ERROR, "cmd <%s> is wrong.\n", cmdName);
         return CMD_WRONG;
     }
-    if (cmdGetStatus == CMD_NO)
+    if (cmdStatus == CMD_NO)
         return CMD_NO;
 
     if (LabelIs(cmdName))
