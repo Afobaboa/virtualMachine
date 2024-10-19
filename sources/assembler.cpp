@@ -5,6 +5,7 @@
 
 #include "assembler.h"
 #include "processor.h"
+#include "virtualMachine.h"
 #include "labelArray.h"
 #include "logPrinter.h"
 

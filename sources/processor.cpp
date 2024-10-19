@@ -4,6 +4,8 @@
 #include <string.h>
 
 #include "processor.h"
+#include "virtualMachine.h"
+#include "logPrinter.h"
 #include "stack.h"
 
 
