@@ -90,7 +90,7 @@ bool LabelAdd(LabelArray* labelArray, char* labelName, const size_t instructionN
     
     if (instructionNum == labelPoisonNum)
     {
-        LOG_PRINT(ERROR, "instructionNum == POSON == %zu\n", labelPoisonNum);
+        LOG_PRINT(ERROR, "instructionNum == POISON == %zu\n", labelPoisonNum);
         return false;
     }
 
@@ -219,10 +219,18 @@ static void LabelDump(Label* label)
     else
     {
         for (size_t charNum = 0; charNum < maxLabelNameLength; charNum++)
+        {
+            if (label->name[charNum] == '\0')
+                break;
             LOG_DUMMY_PRINT("%c", label->name[charNum]);
+        }
         
         for (size_t charNum = 0; charNum < maxLabelNameLength; charNum++)
+        {
+            if (label->name[charNum] == '\0')
+                break;
             LOG_DUMMY_PRINT("%d ", label->name[charNum]);
+        }
 
         LOG_DUMMY_PRINT("\n");
     }

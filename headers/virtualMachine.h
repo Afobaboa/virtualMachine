@@ -28,7 +28,7 @@ enum COMMAND_NAMES
 };
 typedef enum COMMAND_NAMES cmdName_t;
 
-const size_t maxCmdLength = 32;
+const size_t MAX_CMD_LENGTH = 32;
 
 
 /**
@@ -44,7 +44,7 @@ const argc_t IN_ARGC   = 0;
 const argc_t OUT_ARGC  = 0;
 const argc_t JMP_ARGC  = 1;
 
-const size_t maxCmdArgc = 4;
+const size_t MAX_CMD_ARGC = 4;
 
 
 //--------------------------------------------------------------------------------------------------

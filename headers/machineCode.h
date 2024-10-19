@@ -29,15 +29,25 @@ typedef uint64_t instruction_t;
 {
     CODE_OK,
     CODE_LEFT,
-    CODE_OVERFLOW
+    CODE_OVERFLOW,
+    CODE_UNDERFLOW
 };
 typedef enum CODE_STATUSES codeStatus_t;
+
+
+enum JUMP_MODES
+{
+    JUMP_ABSOLUTE,
+    JUMP_RELATIVE
+};
+typedef enum JUMP_MODES jumpMode_t;
 
 
 //--------------------------------------------------------------------------------------------------
 
 
 const size_t FIRST_INSTRUCTION_NUM = 0;
+
 
 const char* const MACHINE_CODE_FILE_EXTENSION = ".vm";
 
@@ -61,10 +71,14 @@ codeStatus_t MachineCodeGetNextInstruction(MachineCode* machineCode,
 codeStatus_t MachineCodeAddInstruction(MachineCode* machineCode, const instruction_t instruction);
 
 
-codeStatus_t MachineCodeJump(MachineCode* machineCode, const size_t instructionNum);
+codeStatus_t MachineCodeJump(MachineCode* machineCode, const jumpMode_t jumpMode,
+                                                       const int64_t    instructionShift);
 
 
 bool MachineCodeWriteToFile(MachineCode* machineCode, char* fileName);
+
+
+size_t MachineCodeGetInstructionNum(MachineCode* machineCode);
 
 
 //--------------------------------------------------------------------------------------------------

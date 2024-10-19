@@ -87,12 +87,29 @@ codeStatus_t MachineCodeAddInstruction(MachineCode* machineCode, const instructi
 }
 
 
-codeStatus_t MachineCodeJump(MachineCode* machineCode, const size_t instructionNum)
+codeStatus_t MachineCodeJump(MachineCode* machineCode, const jumpMode_t jumpMode,  
+                                                       const int64_t instructionShift)
 {
-    if (instructionNum >= machineCode->instructionCount)
+    if (instructionShift >= (int64_t) machineCode->instructionCount)
         return CODE_OVERFLOW;
+
+    size_t newInstructionNum = machineCode->instructionNum + (size_t) instructionShift;
+    switch (jumpMode)
+    {
+    case JUMP_ABSOLUTE:
+        machineCode->instructionNum = (size_t) instructionShift;
+        break;
     
-    machineCode->instructionNum = instructionNum;
+    case JUMP_RELATIVE:
+        if (newInstructionNum < (int64_t) FIRST_INSTRUCTION_NUM)
+            return CODE_UNDERFLOW;
+        machineCode->instructionNum = newInstructionNum;
+        break;
+
+    default:
+        return CODE_UNDERFLOW;
+    }
+    
     return CODE_OK;
 }
 
@@ -111,4 +128,10 @@ bool MachineCodeWriteToFile(MachineCode* machineCode, char* fileName)
 
     fclose(file);
     return true;
+}
+
+
+size_t MachineCodeGetInstructionNum(MachineCode* machineCode)
+{
+    return machineCode->instructionNum;
 }

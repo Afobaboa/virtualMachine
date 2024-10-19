@@ -33,15 +33,7 @@ typedef enum COMMAND_GET_STATUS cmdGetStatus_t;
 static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode, LabelArray* labelArray);
 
 
-static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer, 
-                             int* cmdArgvBuffer, LabelArray* labelArray,
-                             size_t instructionNum, size_t* lineNum);
-
-
 static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer, size_t* lineNum);
-
-
-static bool CmdAssembledWrite(MachineCode* machineCode, cmdName_t cmdName, int* cmdArgv);
 
 
 /** 
@@ -99,8 +91,12 @@ static bool ConvertToInt(char* string, int* intBuffer);
 static const char* CmdGetStatusName(cmdGetStatus_t cmdGetStatus);
 
 
-static cmdGetStatus_t JumpSetAddress(char** assemblyCode, int* argvBuffer, 
+static cmdGetStatus_t JumpSetAddress(char** assemblyCode, size_t* jumpInstructionNumBuffer, 
                                      LabelArray* labelArray, size_t* lineNum);
+
+
+static cmdGetStatus_t CmdNextGetAndWrite(char** assemblyCodePtr, MachineCode* machineCode, 
+                                         LabelArray* labelArray, size_t* lineNum);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -141,9 +137,12 @@ bool Assemble(const char* fileName)
         return false;
     }
 
+    LABEL_ARRAY_DUMP(&labelArray);
     AssembleCmds(fileToAssembleContent, &machineCode, &labelArray);
-    MachineCodeJump(&machineCode, FIRST_INSTRUCTION_NUM);
+    LABEL_ARRAY_DUMP(&labelArray);
+    MachineCodeJump(&machineCode, JUMP_ABSOLUTE, FIRST_INSTRUCTION_NUM);
     bool assemblingResult = AssembleCmds(fileToAssembleContent, &machineCode, &labelArray);
+    LABEL_ARRAY_DUMP(&labelArray);
 
     char* assembledFileName = NULL;
     if (!FileNameChangeExtension((char*) fileName, &assembledFileName, ".asm", 
@@ -168,152 +167,24 @@ bool Assemble(const char* fileName)
 //--------------------------------------------------------------------------------------------------
 
 
-static bool AssembleCmds(char* assemblyCode, 
-                         MachineCode* machineCode, LabelArray* labelArray)
+static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode, LabelArray* labelArray)
 {
     size_t lineNum = 1;
-    cmdName_t cmdBuffer = WRONG;
-    int cmdArgvBuffer[maxCmdArgc] = {};
     cmdGetStatus_t cmdGetStatus = CMD_WRONG;
-    // printf("assemblyCode = %p\n", assemblyCode);
 
     for (;;)
     {
-        cmdGetStatus = CmdGet(&assemblyCode, &cmdBuffer, cmdArgvBuffer, labelArray, 
-                              machineCode->instructionNum, &lineNum);
+        cmdGetStatus = CmdNextGetAndWrite(&assemblyCode, machineCode, labelArray, &lineNum);
 
         if (cmdGetStatus == CMD_NO)
             break;
 
-        if (cmdGetStatus == CMD_LABEL)
-            continue;
-
-        if ( cmdGetStatus == CMD_WRONG ||
-            !CmdAssembledWrite(machineCode, cmdBuffer, cmdArgvBuffer))
-        {
-            // LOG_PRINT(ERROR, "cmdGetStatus = %s", CmdGetStatusName(cmdGetStatus));
+        if (cmdGetStatus == CMD_WRONG)
             return false;
-        }
     }
 
     return true;
 }
-
-
-#define CMD_SET_CASE(CMD_NAME)                                                  \
-{                                                                               \
-    if (strcmp(cmdName, GET_NAME(CMD_NAME)) == 0)                               \
-    {                                                                           \
-        *cmdNameBuffer = CMD_NAME;                                              \
-        char argBuffer[maxCmdLength + 1] = {};                                  \
-        for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
-        {                                                                       \
-            cmdGetStatus = GetNextWord(assemblyCodePtr, argBuffer, lineNum);    \
-            if (cmdGetStatus != CMD_OK)                                         \
-            {                                                                   \
-                ColoredPrintf(RED, "Error in line %zu: "                        \
-                                   "wrong arguments of command %s.\n",          \
-                                    *lineNum,                                   \
-                                    GET_NAME(CMD_NAME));                        \
-                return cmdGetStatus;                                            \
-            }                                                                   \
-                                                                                \
-            if (!ConvertToInt(argBuffer, cmdArgvBuffer + argNum))               \
-                return CMD_WRONG;                                               \
-        }                                                                       \
-        SkipSpaces(assemblyCodePtr, lineNum);                                   \
-        SkipComments(assemblyCodePtr, lineNum);                                 \
-                                                                                \
-        return CMD_OK;                                                          \
-    }                                                                           \
-}
-
-
-static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer, 
-                             int* cmdArgvBuffer, LabelArray* labelArray, 
-                             size_t instructionNum, size_t* lineNum)
-{
-    char cmdName[maxCmdLength + 1] = {};
-    cmdGetStatus_t cmdGetStatus = GetNextWord(assemblyCodePtr, cmdName, lineNum);
-    // LOG_PRINT(INFO, "cmdName = <%s>.\n", cmdName);
-
-    if (cmdGetStatus == CMD_WRONG)
-    {
-        ColoredPrintf(RED, "Error in line %zu: wrong command name!\n", *lineNum);
-        // LOG_PRINT(ERROR, "cmd <%s> is wrong.\n", cmdName);
-        return CMD_WRONG;
-    }
-    if (cmdGetStatus == CMD_NO)
-        return CMD_NO;
-
-    if (LabelIs(cmdName))
-    {
-        LabelAdd(labelArray, cmdName, instructionNum);
-        return CMD_LABEL;
-    }
-
-    CMD_SET_CASE(PUSH);
-    CMD_SET_CASE(ADD);
-    CMD_SET_CASE(SUB);
-    CMD_SET_CASE(DIV);    
-    CMD_SET_CASE(MUL);
-    CMD_SET_CASE(OUT);
-    CMD_SET_CASE(IN);
-
-    if (strcmp(cmdName, "JMP") == 0)
-    {
-        *cmdNameBuffer = JMP;
-        if (JumpSetAddress(assemblyCodePtr, cmdArgvBuffer, labelArray, lineNum) != CMD_OK)
-            return CMD_WRONG;
-        return CMD_OK;
-    }
-
-    ColoredPrintf(RED, "Error in line %zu: command %s doesn't exist.\n", 
-                        lineNum, cmdName);
-    return CMD_WRONG;
-}
-#undef CMD_SET_CASE
-
-
-#define CMD_ASSEMBLED_WRITE_CASE(CMD_NAME)                                      \
-{                                                                               \
-    case CMD_NAME:                                                              \
-        machineCode->code[machineCode->instructionNum] = CMD_NAME;              \
-        machineCode->instructionNum++;                                          \
-        for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
-        {                                                                       \
-            machineCode->code[machineCode->instructionNum] = cmdArgv[argNum];   \
-            machineCode->instructionNum++;                                      \
-        }                                                                       \
-        break;                                                                  \
-}
-
-
-static bool CmdAssembledWrite(MachineCode* machineCode, cmdName_t cmdName, int* cmdArgv)
-{
-    if (machineCode == NULL || cmdArgv == NULL)
-        return false;
-
-    switch (cmdName)
-    {
-    CMD_ASSEMBLED_WRITE_CASE(PUSH);
-    CMD_ASSEMBLED_WRITE_CASE(ADD);
-    CMD_ASSEMBLED_WRITE_CASE(SUB);
-    CMD_ASSEMBLED_WRITE_CASE(DIV);
-    CMD_ASSEMBLED_WRITE_CASE(MUL);
-    CMD_ASSEMBLED_WRITE_CASE(OUT);
-    CMD_ASSEMBLED_WRITE_CASE(IN);
-    CMD_ASSEMBLED_WRITE_CASE(JMP);
-
-    case WRONG:
-    default:
-        LOG_PRINT(ERROR, "cmdName = %d\n", cmdName);
-        return false;
-    }
-
-    return true;
-}
-#undef CMD_ASSEMBLED_WRITE_CASE
 
 
 static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer, size_t* lineNum)
@@ -321,7 +192,7 @@ static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer, size_t* l
     SkipSpaces(contentPtr, lineNum);
 
     int nextChar = 0;
-    for (size_t charNum = 0; charNum < maxCmdLength; charNum++)
+    for (size_t charNum = 0; charNum < MAX_CMD_LENGTH; charNum++)
     {
         // printf("contentPtr = %p\n", contentPtr);
         // printf("content = %p\n", *contentPtr);
@@ -347,7 +218,7 @@ static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer, size_t* l
         // LOG_PRINT(INFO, "cmd = <%s>, nextChar = %d\n", cmdNameBuffer, nextChar);
         return CMD_WRONG;
     }
-    // wordBuffer[maxCmdLength] = '\0';
+    // wordBuffer[MAX_CMD_LENGTH] = '\0';
 
     return CMD_OK;
 }
@@ -457,15 +328,18 @@ static const char* CmdGetStatusName(cmdGetStatus_t cmdGetStatus)
 }
 
 
-static cmdGetStatus_t JumpSetAddress(char** assemblyCode, int* argvBuffer, 
+static cmdGetStatus_t JumpSetAddress(char** assemblyCode, size_t* jumpInstructionNumBuffer, 
                                      LabelArray* labelArray, size_t* lineNum)
 {
     char labelName[maxLabelNameLength] = {};
     GetNextWord(assemblyCode, labelName, lineNum);
     if (!LabelIs(labelName))
+    {
+        LOG_PRINT(ERROR, "LabelName = <%s>\n", labelName);
         return CMD_WRONG;
+    }
 
-    size_t instructionNum = 0;
+    size_t instructionNum = labelPoisonNum;
     LabelFind(labelArray, labelName, &instructionNum);
     if (instructionNum == labelPoisonNum)
     {
@@ -473,7 +347,86 @@ static cmdGetStatus_t JumpSetAddress(char** assemblyCode, int* argvBuffer,
         return CMD_WRONG;
     }
 
-    argvBuffer[0] = instructionNum;
+    *jumpInstructionNumBuffer = instructionNum;
     
     return CMD_OK;
 }
+
+
+#define CMD_SET_CASE(CMD_NAME)                                                  \
+{                                                                               \
+    if (strcmp(cmdName, GET_NAME(CMD_NAME)) == 0)                               \
+    {                                                                           \
+        MachineCodeAddInstruction(machineCode, (instruction_t) CMD_NAME);       \
+        char argBuffer[MAX_CMD_LENGTH + 1] = {};                                \
+        for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
+        {                                                                       \
+            cmdGetStatus = GetNextWord(assemblyCodePtr, argBuffer, lineNum);    \
+            if (cmdGetStatus != CMD_OK)                                         \
+            {                                                                   \
+                ColoredPrintf(RED, "Error in line %zu: "                        \
+                                   "wrong arguments of command %s.\n",          \
+                                    *lineNum,                                   \
+                                    GET_NAME(CMD_NAME));                        \
+                return cmdGetStatus;                                            \
+            }                                                                   \
+                                                                                \
+            if (!ConvertToInt(argBuffer, (int*) (argvBuffer + argNum)))         \
+                return CMD_WRONG;                                               \
+                                                                                \
+            MachineCodeAddInstruction(machineCode, argvBuffer[argNum]);         \
+        }                                                                       \
+        SkipSpaces(assemblyCodePtr, lineNum);                                   \
+        SkipComments(assemblyCodePtr, lineNum);                                 \
+                                                                                \
+        return CMD_OK;                                                          \
+    }                                                                           \
+}
+
+
+static cmdGetStatus_t CmdNextGetAndWrite(char** assemblyCodePtr, MachineCode* machineCode, 
+                                         LabelArray* labelArray, size_t* lineNum)
+{
+    char cmdName[MAX_CMD_LENGTH + 1] = {};
+    cmdGetStatus_t cmdGetStatus = GetNextWord(assemblyCodePtr, cmdName, lineNum);
+    // LOG_PRINT(INFO, "cmdName = <%s>.\n", cmdName);
+
+    if (cmdGetStatus == CMD_WRONG)
+    {
+        ColoredPrintf(RED, "Error in line %zu: wrong command name!\n", *lineNum);
+        // LOG_PRINT(ERROR, "cmd <%s> is wrong.\n", cmdName);
+        return CMD_WRONG;
+    }
+    if (cmdGetStatus == CMD_NO)
+        return CMD_NO;
+
+    if (LabelIs(cmdName))
+    {
+        LabelAdd(labelArray, cmdName, MachineCodeGetInstructionNum(machineCode));
+        return CMD_LABEL;
+    }
+
+    instruction_t argvBuffer[MAX_CMD_ARGC + 1] = {};
+    CMD_SET_CASE(PUSH);
+    CMD_SET_CASE(ADD);
+    CMD_SET_CASE(SUB);
+    CMD_SET_CASE(DIV);    
+    CMD_SET_CASE(MUL);
+    CMD_SET_CASE(OUT);
+    CMD_SET_CASE(IN);
+
+    if (strcmp(cmdName, "JMP") == 0)
+    {
+        MachineCodeAddInstruction(machineCode, JMP);
+        size_t jumpInstructionNum = 0;
+        JumpSetAddress(assemblyCodePtr, &jumpInstructionNum, labelArray, lineNum);
+        
+        MachineCodeAddInstruction(machineCode, jumpInstructionNum);
+        return CMD_OK;
+    }
+
+    ColoredPrintf(RED, "Error in line %zu: command %s doesn't exist.\n", 
+                        lineNum, cmdName);
+    return CMD_WRONG;
+}
+#undef CMD_SET_CASE

@@ -96,11 +96,11 @@ static void ProcessorDelete(Processor* processor)
 }
 
 
-#define DO_CMD_IN_CASE(CMD_NAME) \
-{   \
-    case CMD_NAME: \
-        Do##CMD_NAME(processor); \
-        break; \
+#define DO_CMD_IN_CASE(CMD_NAME)    \
+{                                   \
+    case CMD_NAME:                  \
+        Do##CMD_NAME(processor);    \
+        break;                      \
 }
 
 
@@ -212,5 +212,5 @@ static void DoJMP(Processor* processor)
 {
     instruction_t instructionNum = 0;
     MachineCodeGetNextInstruction(&(processor->machineCode), &instructionNum);
-    MachineCodeJump(&(processor->machineCode), instructionNum);
+    MachineCodeJump(&(processor->machineCode), JUMP_ABSOLUTE, (int64_t) instructionNum);
 }
