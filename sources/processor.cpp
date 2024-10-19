@@ -80,7 +80,10 @@ bool ExecuteProgram(const char* programName)
     {
         // printf("%zu\n", processor.machineCode.instructionNum);
         if (!InstructionExecute(&processor))
+        {
+            ProcessorDelete(&processor);
             return false;
+        }
     }
 
     ProcessorDelete(&processor);

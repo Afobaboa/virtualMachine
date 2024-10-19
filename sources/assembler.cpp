@@ -100,7 +100,8 @@ static bool AssembleCmds(char* assemblyCode,
  * @return CMD_WRONG if next command's name of arguments are wrong.
  */
 static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer, 
-                             int* cmdArgvBuffer, LabelArray* labelArray);
+                             int* cmdArgvBuffer, LabelArray* labelArray,
+                             size_t instructionNum);
 
 
 // TODO: change docs
@@ -329,12 +330,13 @@ static bool AssembleCmds(char* assemblyCode,
 {
     cmdName_t cmdBuffer = WRONG;
     int cmdArgvBuffer[maxCmdArgc] = {};
-    cmdGetStatus_t cmdGetStatus = CMD_OK;
+    cmdGetStatus_t cmdGetStatus = CMD_WRONG;
     // printf("assemblyCode = %p\n", assemblyCode);
 
     for (;;)
     {
-        cmdGetStatus = CmdGet(&assemblyCode, &cmdBuffer, cmdArgvBuffer, labelArray);
+        cmdGetStatus = CmdGet(&assemblyCode, &cmdBuffer, cmdArgvBuffer, labelArray, 
+                              machineCode->instructionNum);
 
         if (cmdGetStatus == CMD_NO)
             break;
@@ -384,7 +386,8 @@ static bool AssembleCmds(char* assemblyCode,
 
 
 static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer, 
-                             int* cmdArgvBuffer, LabelArray* labelArray)
+                             int* cmdArgvBuffer, LabelArray* labelArray, 
+                             size_t instructionNum)
 {
     char cmdName[maxCmdLength + 1] = {};
     cmdGetStatus_t cmdGetStatus = GetNextWord(assemblyCodePtr, cmdName);
@@ -400,7 +403,10 @@ static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer,
         return CMD_NO;
 
     if (LabelIs(cmdName))
+    {
+        LabelAdd(labelArray, cmdName, instructionNum);
         return CMD_LABEL;
+    }
 
     CMD_SET_CASE(PUSH);
     CMD_SET_CASE(ADD);
