@@ -37,7 +37,7 @@ typedef enum CODE_STATUSES codeStatus_t;
 //--------------------------------------------------------------------------------------------------
 
 
-const size_t firstInstructionNum = 0;
+const size_t FIRST_INSTRUCTION_NUM = 0;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -60,6 +60,9 @@ codeStatus_t MachineCodeAddInstruction(MachineCode* machineCode, const instructi
 
 
 codeStatus_t MachineCodeJump(MachineCode* machineCode, const size_t instructionNum);
+
+
+bool MachineCodeWriteToFile(MachineCode* machineCode, char* fileName);
 
 
 //--------------------------------------------------------------------------------------------------

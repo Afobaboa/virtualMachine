@@ -8,6 +8,7 @@
 #include "machineCode.h"
 #include "labelArray.h"
 #include "logPrinter.h"
+#include "fileProcessor.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -29,111 +30,17 @@ typedef enum COMMAND_GET_STATUS cmdGetStatus_t;
 //--------------------------------------------------------------------------------------------------
 
 
-static size_t lineNum = 1;
+static bool AssembleCmds(char* assemblyCode, MachineCode* machineCode, LabelArray* labelArray);
 
 
-//--------------------------------------------------------------------------------------------------
-
-
-/**
- * This function check if file's extension is extension you need.
- * The extension is supposed to be at the end of fileName.
- * 
- * @param fileName  Name of file.
- * @param extension Extension you need. 
- *                  Extencion must begin with '.' for correct behavour.
- * 
- * @return true if extension is correct,
- * @return false if it isn't true.
- */
-static bool CheckAsmFileExtension(const char* fileName, const char* extension);
-
-
-/**
- * This function change file extension. 
- * ChangeFileExtension("a.b", ".b", ".c") will change "a.b" to "a.c".
- * This function don't check if fileName have substring prevExtension and 
- * you must start extension names with '.' for correct behavour.
- * 
- * @param fileName      Name of file WITH EXTENCION.
- * @param prevExtencion Extencion you want to change.
- *                      fileName MUST ends with prevExtension!!!
- * @param newExtension  File's extension you want to set. 
- *                      newExtension's length must be <= prevExtension's length.
- * 
- * Because this function don't return error status you should use it very carefully.
- */
-static void ChangeFileExtension(char* fileName, const char* prevExtension,
-                                                const char* newExtension);
-
-
-// TODO: edit documentation
-/** 
- * This function convert .asm code from fileToAssemble to machine code of its virtual
- * machine and write it into assembled file. This function check almost all errors. 
- * If there are any detected error in fileToAssemble, this function will mark 
- * assembled file as beated by function MarkFileAsBeated().
- * 
- * @param fileToAssemble Ptr to file with .asm code.
- * @param assembledFile  Ptr to file where will be written machine code.
- * 
- * @return true if converting is complete,
- * @return false if there are any errors. 
- *         This function will be print about errors to terminal.
- *         If you find any detected error the information about this isn't printed to
- *         terminal, make issue about it on github.com/Afobaboa/virtualMachine .
- */
-static bool AssembleCmds(char* assemblyCode, 
-                         MachineCode* machineCode, LabelArray* labelArray);
-
-
-// TODO: change docs
-/**
- * This function tries to get next command from fileToAssemble.
- * This function assumes cmdArgvBuffer is maxCmdArgc, check it yourself.
- * 
- * @param fileToAssemble File with .asm commands for this virtual machine.
- * @param cmdNameBuffer  Ptr to buffer there will be witten name of next command.
- * @param cmdArgvBuffer  Ptr to buffer there will be printed arguments of next command.
- * 
- * @return CMD_OK if all is OK,
- * @return CMD_NO if there are no commands left,
- * @return CMD_WRONG if next command's name of arguments are wrong.
- */
 static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer, 
                              int* cmdArgvBuffer, LabelArray* labelArray,
-                             size_t instructionNum);
+                             size_t instructionNum, size_t* lineNum);
 
 
-// TODO: change docs
-/**
- * This function get next word from file with .asm commands.
- * Word is a set of chars which are not separated by cpases or comments.
- * 
- * @param fileGetFrom File which you try to get next word from.
- * @param wordBuffer  Ptr to word buffer. Buffer capacity must be not less than 
- *                    maxCmdLength. You must ckeck it yourself.
- * 
- * @return CMD_OK if all is OK,
- * @return CMD_NO if there are not any commands left,
- * @return CMD_WRONG if word from fileGetFrom is too long. 
- *         Ptr to next char of fileGetFrom won't be set in start's position.
- */
-static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer);
+static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer, size_t* lineNum);
 
 
-// TODO: change docs
-/**
- * This function will write assembled command (machine code of this command) 
- * to assembledFile.
- * 
- * @param assembledFile Ptr to file with machine code.
- * @param cmdName       Name of command.
- * @param cmdArgv       Array with command's arguments.
- * 
- * @return true if writing is comlete,
- * @return false else.
- */
 static bool CmdAssembledWrite(MachineCode* machineCode, cmdName_t cmdName, int* cmdArgv);
 
 
@@ -161,23 +68,10 @@ static bool IsSpace(char symbol);
 static bool IsCommentSymbol(char symbol);
 
 
-// TODO: change docs
-/**
- * This function skips next space symbols of file and move pointer to file's next char.
- * 
- * @param file Pointer to file.
- */
-static void SkipSpaces(char** contentPtr);
+static void SkipSpaces(char** contentPtr, size_t* lineNum);
 
 
-// TODO: change docs
-/**
- * This function skips next comment line of file and 
- * move pointer to file's next char to next line.
- * 
- * @param file Pointer to file.
- */
-static void SkipComments(char** contentPtr);
+static void SkipComments(char** contentPtr, size_t* lineNum);
 
 
 /**
@@ -205,27 +99,8 @@ static bool ConvertToInt(char* string, int* intBuffer);
 static const char* CmdGetStatusName(cmdGetStatus_t cmdGetStatus);
 
 
-
-static bool CopyFileWithHeaderInfo(FILE* fileFrom, FILE* fileTo);
-
-
-static void MarkFileAsBeated(FILE* file);
-
-
-static bool GetFileSize(FILE* file, size_t* sizeBuffer);
-
-
-static size_t CountInstructions(FILE* file);
-
-
-static bool MachineCodeWriteToFile(MachineCode* machineCode, char* fileName);
-
-
-static char* FileGetContent(const char* fileName);
-
-
 static cmdGetStatus_t JumpSetAddress(char** assemblyCode, int* argvBuffer, 
-                                     LabelArray* labelArray);
+                                     LabelArray* labelArray, size_t* lineNum);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -238,57 +113,51 @@ bool Assemble(const char* fileName)
         ColoredPrintf(RED, "You trying to assemble file with NULL ptr.\n");
         return false;
     }
-
-    if (!CheckAsmFileExtension(fileName, ".asm"))
+    if (!FileNameCheckExtension(fileName, ".asm"))
     {
         ColoredPrintf(RED, "Wrong file extension.\n");
         return false;
     }
 
-    char* fileToAssembleContent = FileGetContent(fileName);
-    if (fileToAssembleContent == NULL)
+    MachineCode machineCode = {};
+    if (!MachineCodeInit(&machineCode))
     {
-        ColoredPrintf(RED, "Assembler error: can't read content of %s.\n", fileName);
+        ColoredPrintf(RED, "Can't init machine code.\n");
         return false;
     }
-    
-    // TODO: add new file with MachineCode methods
-    MachineCode machineCode = {.instructionCount = 1024,
-                               .instructionNum = 0,
-                               .code = NULL};
-    machineCode.code = (instruction_t*) calloc(machineCode.instructionCount, 
-                                               sizeof(instruction_t));
-
     LabelArray labelArray = {};
     if (!LABEL_ARRAY_CREATE(&labelArray))
     {
         ColoredPrintf(RED, "Can't create label array.\n");
+        MachineCodeDelete(&machineCode);
+        return false;
+    }
+    char* fileToAssembleContent = NULL;
+    if (!FileGetContent(fileName, &fileToAssembleContent))
+    {
+        ColoredPrintf(RED, "Assembler error: can't read content of %s.\n", fileName);
+        MachineCodeDelete(&machineCode);
+        LabelArrayDelete(&labelArray);
         return false;
     }
 
     AssembleCmds(fileToAssembleContent, &machineCode, &labelArray);
-    machineCode.instructionNum = 0;
-    lineNum = 1;
+    MachineCodeJump(&machineCode, FIRST_INSTRUCTION_NUM);
+    bool assemblingResult = AssembleCmds(fileToAssembleContent, &machineCode, &labelArray);
 
-    bool assemblingResult = AssembleCmds(fileToAssembleContent, 
-                                         &machineCode, &labelArray);
-    machineCode.instructionCount = machineCode.instructionNum; // For correct writing to file
-
-    const size_t nameLength = strlen(fileName);
-    char* assembledFileName = (char*) calloc(nameLength + 1, sizeof(char));
-    if (assembledFileName == NULL)
+    char* assembledFileName = NULL;
+    if (!FileNameChangeExtension((char*) fileName, &assembledFileName, ".asm", ".vm"))
     {
-        ColoredPrintf(RED, "Can't allocate memory for object file name.");
+        ColoredPrintf(RED, "Can't set assembledFileName.\n");
+        MachineCodeDelete(&machineCode);
+        LabelArrayDelete(&labelArray);
+        free(fileToAssembleContent);
         return false;
     }
-    memmove(assembledFileName, fileName, nameLength);
-    ChangeFileExtension(assembledFileName, ".asm", ".vm");
+    assemblingResult = MachineCodeWriteToFile(&machineCode, assembledFileName);
 
-    if (assemblingResult)
-        assemblingResult = MachineCodeWriteToFile(&machineCode, assembledFileName);
-
+    MachineCodeDelete(&machineCode);
     LabelArrayDelete(&labelArray);
-    free(machineCode.code);
     free(fileToAssembleContent);
     free(assembledFileName);
     return assemblingResult;
@@ -298,37 +167,10 @@ bool Assemble(const char* fileName)
 //--------------------------------------------------------------------------------------------------
 
 
-static bool CheckAsmFileExtension(const char* fileName, const char* extension)
-{
-    const size_t nameLength      = strlen(fileName);
-    const size_t extensionLength = strlen(extension);
-
-    if (nameLength <= extensionLength || extension[0] != '.')
-        return false;
-
-    if (strcmp(fileName + nameLength - extensionLength, extension) != 0)
-        return false;
-
-    return true;
-}
-
-
-static void ChangeFileExtension(char* fileName, const char* prevExtension,
-                                                const char* newExtension)
-{
-    const size_t prevExtencionLength = strlen(prevExtension);
-    const size_t newExtencionLength  = strlen(newExtension);
-    const size_t nameLength          = strlen(fileName);
-    
-    memmove(fileName + nameLength - prevExtencionLength, 
-            newExtension, 
-            newExtencionLength + 1);
-}
-
-
 static bool AssembleCmds(char* assemblyCode, 
                          MachineCode* machineCode, LabelArray* labelArray)
 {
+    size_t lineNum = 1;
     cmdName_t cmdBuffer = WRONG;
     int cmdArgvBuffer[maxCmdArgc] = {};
     cmdGetStatus_t cmdGetStatus = CMD_WRONG;
@@ -337,7 +179,7 @@ static bool AssembleCmds(char* assemblyCode,
     for (;;)
     {
         cmdGetStatus = CmdGet(&assemblyCode, &cmdBuffer, cmdArgvBuffer, labelArray, 
-                              machineCode->instructionNum);
+                              machineCode->instructionNum, &lineNum);
 
         if (cmdGetStatus == CMD_NO)
             break;
@@ -365,12 +207,12 @@ static bool AssembleCmds(char* assemblyCode,
         char argBuffer[maxCmdLength + 1] = {};                                  \
         for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
         {                                                                       \
-            cmdGetStatus = GetNextWord(assemblyCodePtr, argBuffer);             \
+            cmdGetStatus = GetNextWord(assemblyCodePtr, argBuffer, lineNum);    \
             if (cmdGetStatus != CMD_OK)                                         \
             {                                                                   \
                 ColoredPrintf(RED, "Error in line %zu: "                        \
                                    "wrong arguments of command %s.\n",          \
-                                    lineNum,                                    \
+                                    *lineNum,                                   \
                                     GET_NAME(CMD_NAME));                        \
                 return cmdGetStatus;                                            \
             }                                                                   \
@@ -378,8 +220,8 @@ static bool AssembleCmds(char* assemblyCode,
             if (!ConvertToInt(argBuffer, cmdArgvBuffer + argNum))               \
                 return CMD_WRONG;                                               \
         }                                                                       \
-        SkipSpaces(assemblyCodePtr);                                            \
-        SkipComments(assemblyCodePtr);                                          \
+        SkipSpaces(assemblyCodePtr, lineNum);                                   \
+        SkipComments(assemblyCodePtr, lineNum);                                 \
                                                                                 \
         return CMD_OK;                                                          \
     }                                                                           \
@@ -388,15 +230,15 @@ static bool AssembleCmds(char* assemblyCode,
 
 static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer, 
                              int* cmdArgvBuffer, LabelArray* labelArray, 
-                             size_t instructionNum)
+                             size_t instructionNum, size_t* lineNum)
 {
     char cmdName[maxCmdLength + 1] = {};
-    cmdGetStatus_t cmdGetStatus = GetNextWord(assemblyCodePtr, cmdName);
+    cmdGetStatus_t cmdGetStatus = GetNextWord(assemblyCodePtr, cmdName, lineNum);
     // LOG_PRINT(INFO, "cmdName = <%s>.\n", cmdName);
 
     if (cmdGetStatus == CMD_WRONG)
     {
-        ColoredPrintf(RED, "Error in line %zu: wrong command name!\n", lineNum);
+        ColoredPrintf(RED, "Error in line %zu: wrong command name!\n", *lineNum);
         // LOG_PRINT(ERROR, "cmd <%s> is wrong.\n", cmdName);
         return CMD_WRONG;
     }
@@ -420,7 +262,7 @@ static cmdGetStatus_t CmdGet(char** assemblyCodePtr, cmdName_t* cmdNameBuffer,
     if (strcmp(cmdName, "JMP") == 0)
     {
         *cmdNameBuffer = JMP;
-        if (JumpSetAddress(assemblyCodePtr, cmdArgvBuffer, labelArray) != CMD_OK)
+        if (JumpSetAddress(assemblyCodePtr, cmdArgvBuffer, labelArray, lineNum) != CMD_OK)
             return CMD_WRONG;
         return CMD_OK;
     }
@@ -473,9 +315,9 @@ static bool CmdAssembledWrite(MachineCode* machineCode, cmdName_t cmdName, int* 
 #undef CMD_ASSEMBLED_WRITE_CASE
 
 
-static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer)
+static cmdGetStatus_t GetNextWord(char** contentPtr, char* wordBuffer, size_t* lineNum)
 {
-    SkipSpaces(contentPtr);
+    SkipSpaces(contentPtr, lineNum);
 
     int nextChar = 0;
     for (size_t charNum = 0; charNum < maxCmdLength; charNum++)
@@ -528,7 +370,7 @@ static bool IsCommentSymbol(char symbol)
 }
 
 
-static void SkipSpaces(char** contentPtr)
+static void SkipSpaces(char** contentPtr, size_t* lineNum)
 {
     int nextChar = 0;
     for (;;)
@@ -539,7 +381,7 @@ static void SkipSpaces(char** contentPtr)
             return;
             
         if (nextChar == '\n')
-            lineNum++;
+            (*lineNum)++;
 
         if (!IsSpace((char) nextChar))
             break;
@@ -549,7 +391,7 @@ static void SkipSpaces(char** contentPtr)
 }
 
 
-static void SkipComments(char** contentPtr)
+static void SkipComments(char** contentPtr, size_t* lineNum)
 {
     int nextChar = **contentPtr;
     if (nextChar == '\0')
@@ -562,7 +404,7 @@ static void SkipComments(char** contentPtr)
             nextChar = **contentPtr;
             if (nextChar == '\n')
             {
-                lineNum++;
+                (*lineNum)++;
                 break;
             }
         }
@@ -603,6 +445,9 @@ static const char* CmdGetStatusName(cmdGetStatus_t cmdGetStatus)
     case CMD_WRONG:
         return GET_NAME(CMD_WRONG);
 
+    case CMD_LABEL:
+        return  GET_NAME(CMD_LABEL);
+
     default:
         char* errorMessage = (char*) calloc (64, sizeof(char));
         sprintf(errorMessage, "cmdGetStatus %d doesn't exist.\n", cmdGetStatus);
@@ -611,123 +456,11 @@ static const char* CmdGetStatusName(cmdGetStatus_t cmdGetStatus)
 }
 
 
-static bool CopyFileWithHeaderInfo(FILE* fileFrom, FILE* fileTo)
-{
-    rewind(fileFrom);
-    const size_t instructionCount = CountInstructions(fileFrom);
-    fprintf(fileTo, "%zu ", instructionCount);
-
-    size_t fileFromSize = 0;
-    if (!GetFileSize(fileFrom, &fileFromSize))
-    {
-        // LOG_PRINT(ERROR, "Can't get size of file\n");
-        return false;
-    }
-
-    for (size_t charNum = 0; charNum < fileFromSize; charNum++)
-    {
-        int nextChar = fgetc(fileFrom);
-        if (nextChar == EOF)
-        {
-            // LOG_PRINT(ERROR, "Wrong fileFromSize = %zu, charNum = %zu\n", 
-                    //   fileFromSize, charNum);
-            return false;
-        }
-
-        fputc(nextChar, fileTo);
-    }
-    
-    return true;
-}
-
-
-static void MarkFileAsBeated(FILE* file)
-{
-    rewind(file);
-    fprintf(file, "BEATED!!!\n");
-}
-
-
-static bool GetFileSize(FILE* file, size_t* sizeBuffer)
-{
-    rewind(file);
-    size_t fileSize = 0;
-
-    for (;;)
-    {
-        int symbol = fgetc(file);
-        if (symbol == EOF)
-            break;
-        
-        fileSize++;
-    }
-    *sizeBuffer = fileSize;
-    rewind(file);
-
-    return true;
-}
-
-
-static size_t CountInstructions(FILE* file)
-{
-    rewind(file);
-    int buffer = 0;
-    size_t instructionCount = 0;
-    for (;;)
-    {
-        if (fscanf(file, "%d", &buffer) > 0)
-            instructionCount++;
-        else    
-            break;
-    }
-    rewind(file);
-
-    return instructionCount;
-}
-
-
-static bool MachineCodeWriteToFile(MachineCode* machineCode, char* fileName)
-{
-    FILE* file = fopen(fileName, "wb");
-    if (file == NULL)
-    {
-        ColoredPrintf(RED, "Can't write machine code to %s.\n", fileName);
-        return false;
-    }
-
-    fwrite(&(machineCode->instructionCount), sizeof(size_t), 1, file);
-    fwrite(machineCode->code, sizeof(instruction_t), machineCode->instructionCount, file);
-
-    fclose(file);
-    return true;
-}
-
-
-static char* FileGetContent(const char* fileName)
-{
-    FILE* file = fopen(fileName, "rb");
-    if (file == NULL)
-        return NULL;
-     
-    size_t charCount = 0;
-    if (!GetFileSize(file, &charCount))
-        return NULL;
-    // printf("charCount = %zu\n", charCount);
-                                            // +1 for make contentBuffer null-terminated
-    char* contentBuffer = (char*) calloc(charCount + 1, sizeof(char));
-    if (contentBuffer == NULL)
-        return NULL;
-
-    fread(contentBuffer, sizeof(char), charCount, file);
-    return contentBuffer;
-}
-
-
 static cmdGetStatus_t JumpSetAddress(char** assemblyCode, int* argvBuffer, 
-                                     LabelArray* labelArray)
+                                     LabelArray* labelArray, size_t* lineNum)
 {
     char labelName[maxLabelNameLength] = {};
-    GetNextWord(assemblyCode, labelName);
+    GetNextWord(assemblyCode, labelName, lineNum);
     if (!LabelIs(labelName))
         return CMD_WRONG;
 
