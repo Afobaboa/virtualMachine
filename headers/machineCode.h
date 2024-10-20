@@ -81,6 +81,9 @@ bool MachineCodeWriteToFile(MachineCode* machineCode, char* fileName);
 size_t MachineCodeGetInstructionNum(MachineCode* machineCode);
 
 
+void MachineCodeSkipInstruction(MachineCode* machineCode);
+
+
 //--------------------------------------------------------------------------------------------------
 
 

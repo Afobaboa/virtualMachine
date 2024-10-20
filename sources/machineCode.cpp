@@ -135,3 +135,9 @@ size_t MachineCodeGetInstructionNum(MachineCode* machineCode)
 {
     return machineCode->instructionNum;
 }
+
+
+void MachineCodeSkipInstruction(MachineCode* machineCode)
+{
+    machineCode->instructionNum++;
+}
