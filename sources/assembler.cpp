@@ -57,29 +57,7 @@ static void SkipSpaces(Assembler* assembler);
 static void SkipComments(Assembler* assembler);
 
 
-/**
- * This function converts null-terminated string to decimal int and save value in 
- * intBuffer. This funciton don't check if string is to long, and there may be overflow
- * of int value.
- * 
- * @param string    Null-terminated string.
- * @param intBuffer Ptr to buffer of int value.
- * 
- * @return true if convertion is complete,
- * @return false if string isn't a number in char's notation.
- */
-static bool ConvertToInt(char* string, int* intBuffer);
-
-
-/** 
- * This function convert cmdStatus to string with the same name (CMD_OK will be 
- * converted to "CMD_OK"). This function may be usefull for debugging.
- * 
- * @param cmdStatus Your cmdStatus you want to know.
- * 
- * @return Name of cmdStatus. If it isn't exist, that will contains in returned string.
- */
-static const char* CmdStatusName(cmdStatus_t cmdStatus);
+static bool ConvertToInstruction(char* string, instruction_t* valueBuffer);
 
 
 static cmdStatus_t JumpGetAndWriteAddress(Assembler* assembler);
@@ -131,8 +109,8 @@ bool Assemble(const char* fileName)
     }
 
     AssembleCmds(&assembler);
-    MachineCodeJump(&(assembler.machineCode), JUMP_ABSOLUTE, FIRST_INSTRUCTION_NUM);
     bool assemblingResult = AssembleCmds(&assembler);
+    LABEL_ARRAY_DUMP(&assembler.labelArray);
 
     char* assembledFileName = NULL;
     if (!FileNameChangeExtension((char*) fileName, &assembledFileName, ".asm",
@@ -142,7 +120,7 @@ bool Assemble(const char* fileName)
         AssemblerDelete(&assembler);
         return false;
     }
-    assemblingResult = MachineCodeWriteToFile(&(assembler.machineCode), assembledFileName);
+    assemblingResult = MachineCodeWriteToFile(&assembler.machineCode, assembledFileName);
 
     AssemblerDelete(&assembler);
     free(assembledFileName);
@@ -155,25 +133,25 @@ bool Assemble(const char* fileName)
 
 static bool AssemblerInit(Assembler* assembler, const char* fileToAssembleName, Place place)
 {
-    if (!MachineCodeInit(&(assembler->machineCode)))
+    if (!MachineCodeInit(&assembler->machineCode))
     {
         LOG_PRINT_WITH_PLACE(ERROR, place, "Can't init machine code.\n");
         return false;
     }
 
-    if (!LABEL_ARRAY_CREATE(&(assembler->labelArray)))
+    if (!LABEL_ARRAY_CREATE(&assembler->labelArray))
     {
         LOG_PRINT_WITH_PLACE(ERROR, place, "Can't create label array.\n");
-        MachineCodeDelete(&(assembler->machineCode));
+        MachineCodeDelete(&assembler->machineCode);
         return false;
     }
 
-    if (!FileGetContent(fileToAssembleName, &(assembler->assemblyCode)))
+    if (!FileGetContent(fileToAssembleName, &assembler->assemblyCode))
     {
         LOG_PRINT_WITH_PLACE(ERROR, place, "Assembler error: can't read content of %s.\n", 
                              fileToAssembleName);
-        MachineCodeDelete(&(assembler->machineCode));
-        LabelArrayDelete(&(assembler->labelArray));
+        MachineCodeDelete(&assembler->machineCode);
+        LabelArrayDelete(&assembler->labelArray);
         return false;
     }
     
@@ -186,6 +164,8 @@ static bool AssemblerInit(Assembler* assembler, const char* fileToAssembleName, 
 static void AssemblerCodeRewind(Assembler* assembler)
 {
     assembler->lineNum = FIRST_LINE;
+    MachineCodeJump(&assembler->machineCode, JUMP_ABSOLUTE, FIRST_INSTRUCTION_NUM);
+    assembler->assemblyCode = assembler->firstAssemblyCode;
 }
 
 
@@ -195,8 +175,8 @@ static void AssemblerDelete(Assembler* assembler)
     assembler->firstAssemblyCode = NULL;
     assembler->assemblyCode      = NULL;
 
-    MachineCodeDelete(&(assembler->machineCode));
-    LabelArrayDelete(&(assembler->labelArray));
+    MachineCodeDelete(&assembler->machineCode);
+    LabelArrayDelete(&assembler->labelArray);
     assembler->lineNum = 0;
 }
 
@@ -317,9 +297,9 @@ static void SkipComments(Assembler* assembler)
 }
 
 
-static bool ConvertToInt(char* string, int* intBuffer)
+static bool ConvertToInstruction(char* string, instruction_t* valueBuffer)
 {
-    int value = 0;
+    instruction_t value = 0;
     const size_t digitCount = strlen(string);
     for(size_t digitNum = 0; digitNum < digitCount; digitNum++)
     {
@@ -330,54 +310,32 @@ static bool ConvertToInt(char* string, int* intBuffer)
         if (digitCount > 1 && digitNum == 0 && nextDigit == '0')
             return false;
 
-        value = value*10 + (nextDigit - '0');
+        value = value*10 + (instruction_t) (nextDigit - '0');
     }
 
-    *intBuffer = value;
+    *valueBuffer = value;
     return true;
-}
-
-
-static const char* CmdStatusName(cmdStatus_t cmdStatus)
-{
-    switch (cmdStatus)
-    {
-    case CMD_OK:
-        return GET_NAME(CMD_OK);
-
-    case CMD_NO:    
-        return GET_NAME(CMD_NO);
-
-    case CMD_WRONG:
-        return GET_NAME(CMD_WRONG);
-
-    case CMD_LABEL:
-        return  GET_NAME(CMD_LABEL);
-
-    default:
-        char* errorMessage = (char*) calloc (64, sizeof(char));
-        sprintf(errorMessage, "cmdStatus %d doesn't exist.\n", cmdStatus);
-        return errorMessage;
-    }
 }
 
 
 static cmdStatus_t JumpGetAndWriteAddress(Assembler* assembler)
 {
-    char labelName[maxLabelNameLength] = {};
+    char labelName[MAX_LABEL_NAME_LENGTH + 1] = {};
     GetNextWord(assembler, labelName);
     if (!LabelIs(labelName))
     {
         LOG_PRINT(ERROR, "LabelName = <%s>\n", labelName);
         return CMD_WRONG;
     }
+    LABEL_ARRAY_DUMP(&assembler->labelArray);
 
-    size_t instructionNum = labelPoisonNum;
+    size_t instructionNum = LABEL_POISON_NUM;
     LabelFind(&assembler->labelArray, labelName, &instructionNum);
-    if (instructionNum == labelPoisonNum)
+    if (instructionNum == LABEL_POISON_NUM)
     {
-        LabelAdd(&assembler->labelArray, labelName, instructionNum);
-        return CMD_WRONG;
+        MachineCodeAddInstruction(&assembler->machineCode, LABEL_POISON_NUM);
+        LabelAdd(&assembler->labelArray, labelName, LABEL_DUMMY_NUM);
+        return CMD_LABEL;
     }
 
     MachineCodeAddInstruction(&assembler->machineCode, instructionNum);
@@ -411,7 +369,7 @@ static cmdStatus_t CmdNextGetAndWrite(Assembler* assembler)
     if (LabelIs(cmdName))
     {
         size_t instructionNum = MachineCodeGetInstructionNum(&assembler->machineCode);
-        LabelAdd(&assembler->labelArray, cmdName, instructionNum);
+        LabelAddOrChangeInstructionNum(&assembler->labelArray, cmdName, instructionNum);
         return CMD_LABEL;
     }
 
@@ -431,8 +389,8 @@ static cmdStatus_t CmdNextGetAndWrite(Assembler* assembler)
 #undef CMD_SET_CASE
 
 
-#define CMD_SET(CMD_NAME) \
-{ \
+#define CMD_SET(CMD_NAME)                                                           \
+{                                                                                   \
     MachineCodeAddInstruction(&assembler->machineCode, (instruction_t) CMD_NAME);   \
     char argBuffer[MAX_CMD_LENGTH + 1] = {};                                        \
     instruction_t argvBuffer[MAX_CMD_ARGC + 1]  = {};                               \
@@ -449,7 +407,7 @@ static cmdStatus_t CmdNextGetAndWrite(Assembler* assembler)
             return cmdStatus;                                                       \
         }                                                                           \
                                                                                     \
-        if (!ConvertToInt(argBuffer, (int*) (argvBuffer + argNum)))                 \
+        if (!ConvertToInstruction(argBuffer, argvBuffer + argNum))                  \
             return CMD_WRONG;                                                       \
                                                                                     \
         MachineCodeAddInstruction(&assembler->machineCode, argvBuffer[argNum]);     \
@@ -459,8 +417,6 @@ static cmdStatus_t CmdNextGetAndWrite(Assembler* assembler)
                                                                                     \
     return CMD_OK;                                                                  \
 }
-
-
 
 
 static cmdStatus_t SetPUSH(Assembler* assembler)
@@ -508,7 +464,7 @@ static cmdStatus_t SetOUT(Assembler* assembler)
 
 static cmdStatus_t SetJMP(Assembler* assembler)
 {
-    MachineCodeAddInstruction(&(assembler->machineCode), JMP);
+    MachineCodeAddInstruction(&assembler->machineCode, JMP);
     return JumpGetAndWriteAddress(assembler);
 }
 

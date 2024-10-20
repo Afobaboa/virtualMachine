@@ -172,11 +172,12 @@ bool LabelAddOrChangeInstructionNum(LabelArray* labelArray, char* labelName,
                                     const size_t newInstructionNum)
 {
     size_t prevInstructionNum = LABEL_POISON_NUM;
-    if (!LabelFind(labelArray, labelName, &prevInstructionNum))
-        return false;
+    LabelFind(labelArray, labelName, &prevInstructionNum);
     
-    if (prevInstructionNum == LABEL_DUMMY_NUM)
+    if (prevInstructionNum != LABEL_POISON_NUM)
+    {
         return LabelChangeInstructionNum(labelArray, labelName, newInstructionNum);
+    }
     
     return LabelAdd(labelArray, labelName, newInstructionNum);
 }
