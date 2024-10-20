@@ -45,10 +45,12 @@ static bool InstructionExecute(Processor* processor);
 
 
 static void DoPUSH(Processor* processor);
+
 static void DoADD(Processor* processor);
 static void DoSUB(Processor* processor);
 static void DoDIV(Processor* processor);
 static void DoMUL(Processor* processor);
+
 static bool DoIN(Processor* processor);
 static void DoOUT(Processor* processor);
 
@@ -119,12 +121,21 @@ static bool InstructionExecute(Processor* processor)
     switch (cmdName)
     {
     DO_CMD_IN_CASE(PUSH);
+
     DO_CMD_IN_CASE(ADD);
     DO_CMD_IN_CASE(SUB);
     DO_CMD_IN_CASE(MUL);
     DO_CMD_IN_CASE(DIV);
+
     DO_CMD_IN_CASE(OUT);
+
     DO_CMD_IN_CASE(JMP);
+    DO_CMD_IN_CASE(JA);
+    DO_CMD_IN_CASE(JAE);
+    DO_CMD_IN_CASE(JB);
+    DO_CMD_IN_CASE(JBE);
+    DO_CMD_IN_CASE(JE);
+    DO_CMD_IN_CASE(JNE);
 
     case IN:
         if (!DoIN(processor))
@@ -227,7 +238,6 @@ static void DoJMP(Processor* processor)
     else                                                        \
         MachineCodeSkipInstruction(&processor->machineCode);    \
 }
-
 
 static void DoJA(Processor* processor)  { JUMP_IF(>);  }
 static void DoJAE(Processor* processor) { JUMP_IF(>=); }

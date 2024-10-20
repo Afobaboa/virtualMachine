@@ -76,13 +76,21 @@ static void AssemblerDelete(Assembler* assembler);
 
 
 static cmdStatus_t SetPUSH(Assembler* assembler);
+
 static cmdStatus_t SetADD(Assembler* assembler);
 static cmdStatus_t SetSUB(Assembler* assembler);
 static cmdStatus_t SetMUL(Assembler* assembler);
 static cmdStatus_t SetDIV(Assembler* assembler);
 static cmdStatus_t SetIN(Assembler* assembler);
 static cmdStatus_t SetOUT(Assembler* assembler);
+
 static cmdStatus_t SetJMP(Assembler* assembler);
+static cmdStatus_t SetJA(Assembler* assembler);
+static cmdStatus_t SetJAE(Assembler* assembler);
+static cmdStatus_t SetJB(Assembler* assembler);
+static cmdStatus_t SetJBE(Assembler* assembler);
+static cmdStatus_t SetJE(Assembler* assembler);
+static cmdStatus_t SetJNE(Assembler* assembler);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -374,13 +382,22 @@ static cmdStatus_t CmdNextGetAndWrite(Assembler* assembler)
     }
 
     CMD_SET_CASE(PUSH);
+
     CMD_SET_CASE(ADD);
     CMD_SET_CASE(SUB);
     CMD_SET_CASE(DIV);    
     CMD_SET_CASE(MUL);
+
     CMD_SET_CASE(OUT);
     CMD_SET_CASE(IN);
+
     CMD_SET_CASE(JMP);
+    CMD_SET_CASE(JA);
+    CMD_SET_CASE(JAE);
+    CMD_SET_CASE(JB);
+    CMD_SET_CASE(JBE);
+    CMD_SET_CASE(JE);
+    CMD_SET_CASE(JNE);
 
     ColoredPrintf(RED, "Error in line %zu: command %s doesn't exist.\n", 
                         assembler->lineNum, cmdName);
@@ -418,54 +435,27 @@ static cmdStatus_t CmdNextGetAndWrite(Assembler* assembler)
     return CMD_OK;                                                                  \
 }
 
-
-static cmdStatus_t SetPUSH(Assembler* assembler)
-{
-    CMD_SET(PUSH);
-}
-
-
-static cmdStatus_t SetSUB(Assembler* assembler)
-{
-    CMD_SET(SUB);
-}
-
-
-static cmdStatus_t SetMUL(Assembler* assembler)
-{
-    CMD_SET(MUL);
-}
-
-
-static cmdStatus_t SetDIV(Assembler* assembler)
-{
-    CMD_SET(DIV);
-}
-
-
-static cmdStatus_t SetADD(Assembler* assembler)
-{
-    CMD_SET(ADD);
-}
-
-
-static cmdStatus_t SetIN(Assembler* assembler)
-{
-    CMD_SET(IN);
-}
-
-
-static cmdStatus_t SetOUT(Assembler* assembler)
-{
-    CMD_SET(OUT);
-}
+static cmdStatus_t SetPUSH(Assembler* assembler) { CMD_SET(PUSH); }
+static cmdStatus_t SetSUB(Assembler* assembler)  { CMD_SET(SUB);  }
+static cmdStatus_t SetMUL(Assembler* assembler)  { CMD_SET(MUL);  }
+static cmdStatus_t SetDIV(Assembler* assembler)  { CMD_SET(DIV);  }
+static cmdStatus_t SetADD(Assembler* assembler)  { CMD_SET(ADD);  }
+static cmdStatus_t SetIN(Assembler* assembler)   { CMD_SET(IN);   }
+static cmdStatus_t SetOUT(Assembler* assembler)  { CMD_SET(OUT);  }
 #undef CMD_SET
 
 
-static cmdStatus_t SetJMP(Assembler* assembler)
-{
-    MachineCodeAddInstruction(&assembler->machineCode, JMP);
-    return JumpGetAndWriteAddress(assembler);
+#define SET_JUMP(JUMP_NAME)                                         \
+{                                                                   \
+    MachineCodeAddInstruction(&assembler->machineCode, JUMP_NAME);  \
+    return JumpGetAndWriteAddress(assembler);                       \
 }
 
-
+static cmdStatus_t SetJMP(Assembler* assembler) { SET_JUMP(JMP); }
+static cmdStatus_t SetJA(Assembler* assembler)  { SET_JUMP(JA);  }
+static cmdStatus_t SetJAE(Assembler* assembler) { SET_JUMP(JAE); }
+static cmdStatus_t SetJB(Assembler* assembler)  { SET_JUMP(JB);  }
+static cmdStatus_t SetJBE(Assembler* assembler) { SET_JUMP(JBE); }
+static cmdStatus_t SetJE(Assembler* assembler)  { SET_JUMP(JE);  }
+static cmdStatus_t SetJNE(Assembler* assembler) { SET_JUMP(JNE); }
+#undef SET_JUMP
