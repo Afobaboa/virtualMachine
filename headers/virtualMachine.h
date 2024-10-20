@@ -24,6 +24,12 @@ enum COMMAND_NAMES
     IN,
     OUT,
     JMP,
+    JA,
+    JAE,
+    JB,
+    JBE,
+    JE,
+    JNE,
     WRONG
 };
 typedef enum COMMAND_NAMES cmdName_t;
@@ -42,7 +48,6 @@ const argc_t DIV_ARGC  = 0;
 const argc_t MUL_ARGC  = 0;
 const argc_t IN_ARGC   = 0;
 const argc_t OUT_ARGC  = 0;
-const argc_t JMP_ARGC  = 1;
 
 const size_t MAX_CMD_ARGC = 4;
 

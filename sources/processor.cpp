@@ -51,7 +51,14 @@ static void DoDIV(Processor* processor);
 static void DoMUL(Processor* processor);
 static bool DoIN(Processor* processor);
 static void DoOUT(Processor* processor);
+
 static void DoJMP(Processor* processor);
+static void DoJA(Processor* processor);
+static void DoJAE(Processor* processor);
+static void DoJB(Processor* processor);
+static void DoJBE(Processor* processor);
+static void DoJE(Processor* processor);
+static void DoJNE(Processor* processor);
 
 
 //--------------------------------------------------------------------------------------------------
@@ -214,3 +221,59 @@ static void DoJMP(Processor* processor)
     MachineCodeGetNextInstruction(&(processor->machineCode), &instructionNum);
     MachineCodeJump(&(processor->machineCode), JUMP_ABSOLUTE, (int64_t) instructionNum);
 }
+
+
+#define JUMP_IF(CONDITION)                                      \
+{                                                               \
+    instruction_t lastInstruction    = 0;                       \
+    instruction_t preLastInstruction = 0;                       \
+                                                                \
+    if (StackPop(processor->stack, &lastInstruction) != OK ||   \
+        StackPop(processor->stack, &preLastInstruction) != OK)  \
+    {                                                           \
+        ColoredPrintf(RED, "%s: POP ERROR\n", __FUNCTION__);    \
+        return;                                                 \
+    }                                                           \
+                                                                \
+    if (lastInstruction CONDITION preLastInstruction)           \
+        DoJMP(processor);                                       \
+    else                                                        \
+        MachineCodeSkipInstruction(&processor->machineCode);    \
+}
+
+
+static void DoJA(Processor* processor)
+{
+    JUMP_IF(>);
+}
+
+
+static void DoJAE(Processor* processor)
+{
+    JUMP_IF(>=);
+}
+
+
+static void DoJB(Processor* processor)
+{
+    JUMP_IF(<)
+}
+
+
+static void DoJBE(Processor* processor)
+{
+    JUMP_IF(<=);
+}
+
+
+static void DoJE(Processor* processor)
+{
+    JUMP_IF(==);
+}
+
+
+static void DoJNE(Processor* processor)
+{
+    JUMP_IF(!=);
+}
+#undef JUMP_IF
