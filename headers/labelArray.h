@@ -57,6 +57,10 @@ bool LabelChangeInstructionNum(LabelArray* labelArray, char* labelName,
                                const size_t newInstructionNum);
 
 
+bool LabelAddOrChangeInstructionNum(LabelArray* labelArray, char* labelName,
+                                    const size_t newInstructionNum);
+
+
 bool LabelFind(LabelArray* labelArray, char* labelName, size_t* instructionNumBuffer);
 
 

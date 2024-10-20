@@ -168,6 +168,20 @@ bool LabelChangeInstructionNum(LabelArray* labelArray, char* labelName,
 }
 
 
+bool LabelAddOrChangeInstructionNum(LabelArray* labelArray, char* labelName,
+                                    const size_t newInstructionNum)
+{
+    size_t prevInstructionNum = LABEL_POISON_NUM;
+    if (!LabelFind(labelArray, labelName, &prevInstructionNum))
+        return false;
+    
+    if (prevInstructionNum == LABEL_DUMMY_NUM)
+        return LabelChangeInstructionNum(labelArray, labelName, newInstructionNum);
+    
+    return LabelAdd(labelArray, labelName, newInstructionNum);
+}
+
+
 //--------------------------------------------------------------------------------------------------
 
 
