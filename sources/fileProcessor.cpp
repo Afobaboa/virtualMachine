@@ -27,6 +27,9 @@ bool FileNameCheckExtension(const char* fileName, const char* extension)
 bool FileNameChangeExtension(char* prevFileName, char** newFileNameBuffer,
                              const char* prevExtension, const char* newExtension)
 {
+    if (*newFileNameBuffer != NULL)
+        return false;
+
     const size_t prevExtencionLength = strlen(prevExtension);
     const size_t newExtencionLength  = strlen(newExtension);
     const size_t prevFileNameLength  = strlen(prevFileName);

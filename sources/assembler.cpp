@@ -135,7 +135,7 @@ bool Assemble(const char* fileName)
     bool assemblingResult = AssembleCmds(&assembler);
 
     char* assembledFileName = NULL;
-    if (!FileNameChangeExtension((char*) fileName, &assembledFileName, ".asm", 
+    if (!FileNameChangeExtension((char*) fileName, &assembledFileName, ".asm",
                                                                     MACHINE_CODE_FILE_EXTENSION))
     {
         ColoredPrintf(RED, "Can't set assembledFileName.\n");
@@ -225,7 +225,7 @@ static cmdStatus_t GetNextWord(Assembler* assembler, char* wordBuffer)
 {
     SkipSpaces(assembler);
 
-    int nextChar = 0;
+    char nextChar = 0;
     for (size_t charNum = 0; charNum < MAX_CMD_LENGTH; charNum++)
     {
         // printf("contentPtr = %p\n", contentPtr);
@@ -239,15 +239,15 @@ static cmdStatus_t GetNextWord(Assembler* assembler, char* wordBuffer)
             break;
         }
 
-        if (IsSpace((char) nextChar) || IsCommentSymbol((char) nextChar))
+        if (IsSpace(nextChar) || IsCommentSymbol(nextChar))
             break;
 
-        wordBuffer[charNum] = (char) nextChar;
+        wordBuffer[charNum] = nextChar;
         assembler->assemblyCode++;
     }
 
     nextChar = assembler->assemblyCode[0];
-    if (nextChar != '\0' && !IsSpace((char) nextChar) && !IsCommentSymbol((char) nextChar))
+    if (nextChar != '\0' && !IsSpace(nextChar) && !IsCommentSymbol(nextChar))
     {
         // LOG_PRINT(INFO, "cmd = <%s>, nextChar = %d\n", cmdNameBuffer, nextChar);
         return CMD_WRONG;
@@ -386,35 +386,6 @@ static cmdStatus_t JumpGetAndWriteAddress(Assembler* assembler)
 }
 
 
-// #define CMD_SET_CASE(CMD_NAME)                                                  \
-// {                                                                               \
-//     if (strcmp(cmdName, GET_NAME(CMD_NAME)) == 0)                               \
-//     {                                                                           \
-//         MachineCodeAddInstruction(machineCode, (instruction_t) CMD_NAME);       \
-//         char argBuffer[MAX_CMD_LENGTH + 1] = {};                                \
-//         for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)    \
-//         {                                                                       \
-//             cmdStatus = GetNextWord(assemblyCodePtr, argBuffer, lineNum);    \
-//             if (cmdStatus != CMD_OK)                                         \
-//             {                                                                   \
-//                 ColoredPrintf(RED, "Error in line %zu: "                        \
-//                                    "wrong arguments of command %s.\n",          \
-//                                     *lineNum,                                   \
-//                                     GET_NAME(CMD_NAME));                        \
-//                 return cmdStatus;                                            \
-//             }                                                                   \
-//                                                                                 \
-//             if (!ConvertToInt(argBuffer, (int*) (argvBuffer + argNum)))         \
-//                 return CMD_WRONG;                                               \
-//                                                                                 \
-//             MachineCodeAddInstruction(machineCode, argvBuffer[argNum]);         \
-//         }                                                                       \
-//         SkipSpaces(assemblyCodePtr, lineNum);                                   \
-//         SkipComments(assemblyCodePtr, lineNum);                                 \
-//                                                                                 \
-//         return CMD_OK;                                                          \
-//     }                                                                           \
-// }
 #define CMD_SET_CASE(CMD_NAME)                      \
 {                                                   \
     if (strcmp(cmdName, GET_NAME(CMD_NAME)) == 0)   \
@@ -444,7 +415,6 @@ static cmdStatus_t CmdNextGetAndWrite(Assembler* assembler)
         return CMD_LABEL;
     }
 
-    instruction_t argvBuffer[MAX_CMD_ARGC + 1] = {};
     CMD_SET_CASE(PUSH);
     CMD_SET_CASE(ADD);
     CMD_SET_CASE(SUB);
@@ -461,7 +431,36 @@ static cmdStatus_t CmdNextGetAndWrite(Assembler* assembler)
 #undef CMD_SET_CASE
 
 
-#define CMD_SET(CMD_NAME)
+#define CMD_SET(CMD_NAME) \
+{ \
+    MachineCodeAddInstruction(&assembler->machineCode, (instruction_t) CMD_NAME);   \
+    char argBuffer[MAX_CMD_LENGTH + 1] = {};                                        \
+    instruction_t argvBuffer[MAX_CMD_ARGC + 1]  = {};                               \
+    cmdStatus_t cmdStatus = CMD_WRONG;                                              \
+    for (size_t argNum = 0; argNum < (size_t) CMD_NAME##_ARGC; argNum++)            \
+    {                                                                               \
+        cmdStatus = GetNextWord(assembler, argBuffer);                              \
+        if (cmdStatus != CMD_OK)                                                    \
+        {                                                                           \
+            ColoredPrintf(RED, "Error in line %zu: "                                \
+                               "wrong arguments of command %s.\n",                  \
+                                assembler->lineNum,                                 \
+                                GET_NAME(CMD_NAME));                                \
+            return cmdStatus;                                                       \
+        }                                                                           \
+                                                                                    \
+        if (!ConvertToInt(argBuffer, (int*) (argvBuffer + argNum)))                 \
+            return CMD_WRONG;                                                       \
+                                                                                    \
+        MachineCodeAddInstruction(&assembler->machineCode, argvBuffer[argNum]);     \
+    }                                                                               \
+    SkipSpaces(assembler);                                                          \
+    SkipComments(assembler);                                                        \
+                                                                                    \
+    return CMD_OK;                                                                  \
+}
+
+
 
 
 static cmdStatus_t SetPUSH(Assembler* assembler)
