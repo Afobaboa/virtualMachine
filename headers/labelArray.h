@@ -11,17 +11,19 @@
 //--------------------------------------------------------------------------------------------------
 
 
-const size_t maxLabelNameLength = 32;
-const size_t labelPoisonNum     = (size_t) -1;
+const size_t MAX_LABEL_NAME_LENGTH = 32;
+const size_t LABEL_POISON_NUM      = (size_t) -1;
+const size_t LABEL_DUMMY_NUM       = (size_t) -2;
+
 
 struct Label
 {
-    char   name[maxLabelNameLength + 1];
+    char   name[MAX_LABEL_NAME_LENGTH + 1];
     size_t instructionNum;
 };
 
 
-const size_t maxLabelCount = 128;
+const size_t MAX_LABEL_COUNT = 128;
 
 struct LabelArray
 {
@@ -49,6 +51,10 @@ void LabelArrayDump(LabelArray* labelArray, Place place);
 
 
 bool LabelAdd(LabelArray* labelArray, char* labelName, const size_t instructionNum);
+
+
+bool LabelChangeInstructionNum(LabelArray* labelArray, char* labelName, 
+                               const size_t newInstructionNum);
 
 
 bool LabelFind(LabelArray* labelArray, char* labelName, size_t* instructionNumBuffer);

@@ -23,6 +23,9 @@ static void LabelArraySetPoison(LabelArray* labelArray);
 static void LabelDump(Label* label);
 
 
+static bool LabelFindNum(LabelArray* labelArray, char* labelName, size_t* labelNumBuffer);
+
+
 //--------------------------------------------------------------------------------------------------
 
 
@@ -30,7 +33,7 @@ bool LabelArrayCreate(LabelArray* labelArray, Place place)
 {
     labelArray->labelCount = 0;
 
-    labelArray->data = (Label*) calloc(maxLabelCount, sizeof(Label));
+    labelArray->data = (Label*) calloc(MAX_LABEL_COUNT, sizeof(Label));
     if (labelArray->data == NULL)
     {
         LOG_PRINT(ERROR, "%s: %s(): line %d: labelData == NULL\n",
@@ -88,16 +91,16 @@ bool LabelAdd(LabelArray* labelArray, char* labelName, const size_t instructionN
         return false;
     }
     
-    if (instructionNum == labelPoisonNum)
+    if (instructionNum == LABEL_POISON_NUM)
     {
-        LOG_PRINT(ERROR, "instructionNum == POISON == %zu\n", labelPoisonNum);
+        LOG_PRINT(ERROR, "instructionNum == POISON == %zu\n", LABEL_POISON_NUM);
         return false;
     }
 
     Label* label = labelArray->data + labelArray->labelCount;
     label->instructionNum = instructionNum;
 
-    for (size_t charNum = 0; charNum < maxLabelNameLength; charNum++)
+    for (size_t charNum = 0; charNum < MAX_LABEL_NAME_LENGTH; charNum++)
     {
         if (labelName[charNum] == '\0')
             break;
@@ -141,6 +144,30 @@ bool LabelIs(char* labelName)
 }
 
 
+bool LabelChangeInstructionNum(LabelArray* labelArray, char* labelName, 
+                               const size_t newInstructionNum)
+{
+    if (!LabelArrayVerify(labelArray))
+    {
+        LABEL_ARRAY_DUMP(labelArray);
+        return false;
+    }
+
+    size_t prevInstructionNum = LABEL_POISON_NUM;
+    LabelFind(labelArray, labelName, &prevInstructionNum);
+    if (prevInstructionNum == LABEL_POISON_NUM)
+        return false;
+
+    size_t labelNum = LABEL_POISON_NUM;
+    if(!LabelFindNum(labelArray, labelName, &labelNum))
+        return false;
+
+    Label* label = labelArray->data + labelNum;
+    label->instructionNum = newInstructionNum;
+    return true;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 
 
@@ -152,10 +179,10 @@ static bool LabelArrayVerify(LabelArray* labelArray)
         return false;
     }
 
-    if (labelArray->labelCount > maxLabelCount)
+    if (labelArray->labelCount > MAX_LABEL_COUNT)
     {
         LOG_PRINT(ERROR, "labelCount = %zu is bigger than maxLabelCount = %zu\n",
-                  labelArray->labelCount, maxLabelCount);        
+                  labelArray->labelCount, MAX_LABEL_COUNT);        
         return false;
     }    
 
@@ -178,10 +205,10 @@ static bool LabelVerify(Label* label)
         return false;
     }
 
-    if (label->instructionNum == labelPoisonNum)
+    if (label->instructionNum == LABEL_POISON_NUM)
     {
         LOG_PRINT(ERROR, "instructionNum is poisoned, instructionNum == %zu\n", 
-                  labelPoisonNum);
+                  LABEL_POISON_NUM);
         return false;
     }
 
@@ -189,7 +216,7 @@ static bool LabelVerify(Label* label)
     {
         LOG_PRINT(ERROR, "labelName isn't verified!");
         LOG_DUMMY_PRINT("labelName = ");
-        for (size_t charNum = 0; charNum <= maxLabelNameLength; charNum++)
+        for (size_t charNum = 0; charNum <= MAX_LABEL_NAME_LENGTH; charNum++)
         {
             char nextChar = label->name[charNum];
             LOG_DUMMY_PRINT("<%c = %d> ", nextChar, nextChar);
@@ -204,10 +231,10 @@ static bool LabelVerify(Label* label)
 
 static void LabelArraySetPoison(LabelArray* labelArray)
 {
-    for (size_t labelNum = 0; labelNum < maxLabelCount; labelNum++)
+    for (size_t labelNum = 0; labelNum < MAX_LABEL_COUNT; labelNum++)
     {
         Label* label = labelArray->data + labelNum;
-        label->instructionNum = labelPoisonNum;
+        label->instructionNum = LABEL_POISON_NUM;
     }
 }
 
@@ -218,14 +245,14 @@ static void LabelDump(Label* label)
         LOG_DUMMY_PRINT("name == NULL\n");
     else
     {
-        for (size_t charNum = 0; charNum < maxLabelNameLength; charNum++)
+        for (size_t charNum = 0; charNum < MAX_LABEL_NAME_LENGTH; charNum++)
         {
             if (label->name[charNum] == '\0')
                 break;
             LOG_DUMMY_PRINT("%c", label->name[charNum]);
         }
         
-        for (size_t charNum = 0; charNum < maxLabelNameLength; charNum++)
+        for (size_t charNum = 0; charNum < MAX_LABEL_NAME_LENGTH; charNum++)
         {
             if (label->name[charNum] == '\0')
                 break;
@@ -235,7 +262,7 @@ static void LabelDump(Label* label)
         LOG_DUMMY_PRINT("\n");
     }
 
-    if (label->instructionNum == labelPoisonNum)
+    if (label->instructionNum == LABEL_POISON_NUM)
         LOG_DUMMY_PRINT("***");
 
     LOG_DUMMY_PRINT("instructionNum = %zu\n", label->instructionNum);
@@ -244,11 +271,27 @@ static void LabelDump(Label* label)
 
 static bool LabelNameVerify(Label* label)
 {
-    if (label->name[maxLabelNameLength] != '\0')
+    if (label->name[MAX_LABEL_NAME_LENGTH] != '\0')
         return false;
 
     if (label->name[0] == '\0')
         return false;
 
     return true;
+}
+
+
+static bool LabelFindNum(LabelArray* labelArray, char* labelName, size_t* labelNumBuffer)
+{
+    for (size_t labelNum = 0; labelNum < labelArray->labelCount; labelNum++)
+    {
+        Label* label = labelArray->data + labelNum;
+        if (strcmp(label->name, labelName) == 0)
+        {
+            *labelNumBuffer = labelNum;
+            return true;
+        }
+    }
+
+    return false;
 }
