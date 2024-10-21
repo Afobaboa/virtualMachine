@@ -11,14 +11,18 @@
 //--------------------------------------------------------------------------------------------------
 
 
+#define GET_POSITION(x, y) \
+    (Position) {x, y}
+
+
 const size_t VERTICAL_SIZE   = 7;
 const size_t HORIZONTAL_SIZE = 7;
 
 typedef char screenColor_t;
-const screenColor_t COLOR_WHITE  = 'W';
-const screenColor_t COLOR_YELLOW = 'Y';
-const screenColor_t COLOR_GREEN  = 'G';
-const screenColor_t COLOR_RED    = 'R';
+const screenColor_t PIXEL_COLOR_WHITE  = 'W';
+const screenColor_t PIXEL_COLOR_YELLOW = 'Y';
+const screenColor_t PIXEL_COLOR_GREEN  = 'G';
+const screenColor_t PIXEL_COLOR_RED    = 'R';
 
 
 //--------------------------------------------------------------------------------------------------
@@ -40,8 +44,6 @@ struct Position
 
 struct VideoMemory
 {
-    size_t verticalSize;
-    size_t horizontalSize;
     Pixel* pixelArray;
 };
 
@@ -53,7 +55,8 @@ bool VideoMemoryInit(VideoMemory* videoMemory);
 void VideoMemoryDelete(VideoMemory* videoMemory);
 
 void VideoMemoryDraw(VideoMemory* videoMemory);
-bool VideoMemoryColor(VideoMemory* videoMemory, Position* position, screenColor_t color);
+bool VideoMemorySetColor(VideoMemory* videoMemory, Position position, screenColor_t color);
+bool VideoMemorySetSymbol(VideoMemory* videoMemory, Position position, char symbol);
 
 
 //--------------------------------------------------------------------------------------------------
