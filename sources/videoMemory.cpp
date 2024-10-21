@@ -9,7 +9,7 @@
 
 
 static bool VideoMemoryIsIn(Position* position);
-static bool IsColor(screenColor_t color);
+static bool IsColor(pixelColor_t color);
 
 static void PixelPrint(Pixel* pixel);
 
@@ -23,13 +23,7 @@ bool VideoMemoryInit(VideoMemory* videoMemory)
     if (videoMemory->pixelArray == NULL)
         return false;
 
-    Pixel* pixel = NULL;
-    for (size_t pixelNum = 0; pixelNum < HORIZONTAL_SIZE * VERTICAL_SIZE; pixelNum++)
-    {
-        pixel = videoMemory->pixelArray + pixelNum;
-        *pixel = {.symbol = ' ',
-                  .color  = PIXEL_COLOR_WHITE};
-    }
+    VideoMemoryReset(videoMemory);
 
     return true;
 }
@@ -44,12 +38,15 @@ void VideoMemoryDelete(VideoMemory* videoMemory)
 
 void VideoMemoryDraw(VideoMemory* videoMemory)
 {
+    // ColoredPrintf(GREEN, "pixelArray = %p\n", videoMemory->pixelArray);
     Pixel* pixel = NULL;
     for (size_t y = 0; y < VERTICAL_SIZE; y++)
     {
         for (size_t x = 0; x < HORIZONTAL_SIZE; x++)
         {
             pixel = videoMemory->pixelArray + y * HORIZONTAL_SIZE + x;
+            // ColoredPrintf(YELLOW, "symbol = <%c = %zu>, color = <%c = %zu>\n", 
+            //               pixel->symbol, pixel->symbol, pixel->color, pixel->color);
             PixelPrint(pixel);
         }
         putchar('\n');
@@ -57,7 +54,7 @@ void VideoMemoryDraw(VideoMemory* videoMemory)
 }
 
 
-bool VideoMemorySetColor(VideoMemory* videoMemory, Position position, screenColor_t color)
+bool VideoMemorySetColor(VideoMemory* videoMemory, Position position, pixelColor_t color)
 {
     if (!IsColor(color) || !VideoMemoryIsIn(&position))
         return false;
@@ -81,6 +78,18 @@ bool VideoMemorySetSymbol(VideoMemory* videoMemory, Position position, char symb
 }
 
 
+void VideoMemoryReset(VideoMemory* videoMemory)
+{
+    Pixel* pixel = NULL;
+    for (size_t pixelNum = 0; pixelNum < HORIZONTAL_SIZE * VERTICAL_SIZE; pixelNum++)
+    {
+        pixel = videoMemory->pixelArray + pixelNum;
+        *pixel = {.symbol = ' ',
+                  .color  = PIXEL_COLOR_WHITE};
+    }
+}
+
+
 //--------------------------------------------------------------------------------------------------
 
 
@@ -92,7 +101,7 @@ static bool VideoMemoryIsIn(Position* position)
 }
 
 
-static bool IsColor(screenColor_t color)
+static bool IsColor(pixelColor_t color)
 {
     if (color == PIXEL_COLOR_GREEN ||
         color == PIXEL_COLOR_RED   ||

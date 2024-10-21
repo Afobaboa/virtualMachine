@@ -5,8 +5,7 @@
 //--------------------------------------------------------------------------------------------------
 
 
-#include <stddef.h>
-#include <stdint.h>
+#include "RAM.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -19,22 +18,22 @@
 const size_t VERTICAL_SIZE   = 7;
 const size_t HORIZONTAL_SIZE = VERTICAL_SIZE * 2;
 
-typedef uint64_t screenColor_t;
-const screenColor_t PIXEL_COLOR_WHITE  = 'W';
-const screenColor_t PIXEL_COLOR_YELLOW = 'Y';
-const screenColor_t PIXEL_COLOR_GREEN  = 'G';
-const screenColor_t PIXEL_COLOR_RED    = 'R';
+typedef memoryCell_t pixelColor_t;
+const pixelColor_t PIXEL_COLOR_WHITE  = 'W';
+const pixelColor_t PIXEL_COLOR_YELLOW = 'Y';
+const pixelColor_t PIXEL_COLOR_GREEN  = 'G';
+const pixelColor_t PIXEL_COLOR_RED    = 'R';
 
 
 //--------------------------------------------------------------------------------------------------
 
 
-typedef uint64_t symbol_t;
+typedef memoryCell_t pixelSymbol_t;
 
 struct Pixel
 {
-    symbol_t symbol;
-    screenColor_t color;
+    pixelSymbol_t symbol;
+    pixelColor_t color;
 };
 
 
@@ -58,8 +57,9 @@ bool VideoMemoryInit(VideoMemory* videoMemory);
 void VideoMemoryDelete(VideoMemory* videoMemory);
 
 void VideoMemoryDraw(VideoMemory* videoMemory);
-bool VideoMemorySetColor(VideoMemory* videoMemory, Position position, screenColor_t color);
+bool VideoMemorySetColor(VideoMemory* videoMemory, Position position, pixelColor_t color);
 bool VideoMemorySetSymbol(VideoMemory* videoMemory, Position position, char symbol);
+void VideoMemoryReset(VideoMemory* videoMemory);
 
 
 //--------------------------------------------------------------------------------------------------
