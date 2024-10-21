@@ -6,6 +6,7 @@
 
 
 #include <stddef.h>
+#include <stdint.h>
 
 
 //--------------------------------------------------------------------------------------------------
@@ -16,9 +17,9 @@
 
 
 const size_t VERTICAL_SIZE   = 7;
-const size_t HORIZONTAL_SIZE = 7;
+const size_t HORIZONTAL_SIZE = VERTICAL_SIZE * 2;
 
-typedef char screenColor_t;
+typedef uint64_t screenColor_t;
 const screenColor_t PIXEL_COLOR_WHITE  = 'W';
 const screenColor_t PIXEL_COLOR_YELLOW = 'Y';
 const screenColor_t PIXEL_COLOR_GREEN  = 'G';
@@ -28,9 +29,11 @@ const screenColor_t PIXEL_COLOR_RED    = 'R';
 //--------------------------------------------------------------------------------------------------
 
 
+typedef uint64_t symbol_t;
+
 struct Pixel
 {
-    char symbol;
+    symbol_t symbol;
     screenColor_t color;
 };
 
