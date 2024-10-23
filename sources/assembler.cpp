@@ -318,6 +318,13 @@ static bool ConvertToInstruction(char* string, instruction_t* valueBuffer)
 {
     instruction_t value = 0;
     const size_t digitCount = strlen(string);
+
+    if (strlen(string) == 3 && string[0] == '\'' && string[0] == string[2])
+    {
+        *valueBuffer = string[1];
+        return true;
+    }
+
     for(size_t digitNum = 0; digitNum < digitCount; digitNum++)
     {
         char nextDigit = string[digitNum];
