@@ -234,7 +234,7 @@ static void DoPOP(Processor* processor)
 
             instruction_t value = 0;
             StackPop(processor->stack, &value);
-            
+
             *((register64_t*) &processor->registers + registerName - RAX) = value;
         }
     }
@@ -315,7 +315,7 @@ static void DoJMP(Processor* processor)
         return;                                                 \
     }                                                           \
                                                                 \
-    if (lastInstruction CONDITION preLastInstruction)           \
+    if (preLastInstruction CONDITION lastInstruction)           \
     {                                                           \
         StackPush(processor->stack, &preLastInstruction);       \
         StackPush(processor->stack, &lastInstruction);          \
