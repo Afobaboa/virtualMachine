@@ -27,6 +27,7 @@ struct RAM
 bool RamInit(RAM* ram);
 void RamDelete(RAM* ram);
 
+bool RamGetValue(RAM* ram, size_t cellNum, memoryCell_t* valueBuffer);
 bool RamCellSet(RAM* ram, size_t cellNum, memoryCell_t value);
 void RamScreenDraw(RAM* ram);
 

@@ -5,7 +5,18 @@
 //--------------------------------------------------------------------------------------------------
 
 
-#include <stddef.h>
+#include "machineCode.h"
+
+
+//--------------------------------------------------------------------------------------------------
+
+
+struct PushPopMode
+{
+    instruction_t isConst    : 1;
+    instruction_t isRegister : 1;
+    instruction_t isRAM      : 1;
+};
 
 
 //--------------------------------------------------------------------------------------------------
@@ -17,6 +28,7 @@
 enum COMMAND_NAMES
 {
     PUSH = 1,         /**< Push elem to stack. */
+    POP,
     ADD,
     SUB,
     DIV,
@@ -30,6 +42,7 @@ enum COMMAND_NAMES
     JBE,
     JE,
     JNE,
+    DRAW,
     WRONG
 };
 typedef enum COMMAND_NAMES cmdName_t;
@@ -37,19 +50,14 @@ typedef enum COMMAND_NAMES cmdName_t;
 const size_t MAX_CMD_LENGTH = 32;
 
 
-/**
- * Arguments' count of each command of virtualMachine.
- */
-typedef int argc_t;
-const argc_t PUSH_ARGC = 1;
-const argc_t ADD_ARGC  = 0;
-const argc_t SUB_ARGC  = 0;
-const argc_t DIV_ARGC  = 0;
-const argc_t MUL_ARGC  = 0;
-const argc_t IN_ARGC   = 0;
-const argc_t OUT_ARGC  = 0;
-
-const size_t MAX_CMD_ARGC = 4;
+enum REGISTER_NAMES
+{
+    RAX,
+    RBX,
+    RCX, 
+    RDX
+};
+typedef enum REGISTER_NAMES registerName_t;
 
 
 //--------------------------------------------------------------------------------------------------

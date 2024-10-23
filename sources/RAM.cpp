@@ -34,6 +34,16 @@ void RamDelete(RAM* ram)
 }
 
 
+bool RamGetValue(RAM* ram, size_t cellNum, memoryCell_t* valueBuffer)
+{
+    if (cellNum >= RAM_CAPACITY)
+        return false;
+
+    *valueBuffer = ram->memory[cellNum];
+    return true;
+}
+
+
 bool RamCellSet(RAM* ram, size_t cellNum, memoryCell_t value)
 {
     if (cellNum > RAM_CAPACITY)
