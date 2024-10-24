@@ -94,7 +94,7 @@ DEF_CMD_(PUSH,
     {
         instruction_t registerName = 0;
         MachineCodeGetNextInstruction(&processor->machineCode, &registerName);
-        result += RegisterGetValue(processor, (registerName_t) registerName);
+        result += RegisterGetValue(&processor->registers, (registerName_t) registerName);
     }
     
     if (pushMode.isConst)
@@ -136,7 +136,7 @@ DEF_CMD_(POP,
         if (popMode.isRegister)
         {
             MachineCodeGetNextInstruction(&processor->machineCode, &nextInstruction);
-            cellNum += RegisterGetValue(processor, (registerName_t) nextInstruction);
+            cellNum += RegisterGetValue(&processor->registers, (registerName_t) nextInstruction);
         }
 
         if (popMode.isConst)

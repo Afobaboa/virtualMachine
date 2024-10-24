@@ -75,10 +75,6 @@ static void AssemblerCodeRewind(Assembler* assembler);
 static void AssemblerDelete(Assembler* assembler);
 
 
-static bool IsRegister(char* string);
-static registerName_t AToRegisterName(char* string);
-
-
 //--------------------------------------------------------------------------------------------------
 
 
@@ -384,35 +380,3 @@ static cmdStatus_t CmdNextGetAndWrite(Assembler* assembler)
     return CMD_WRONG;
 }
 #undef DEF_CMD_
-
-
-#define DEF_REGISTER_(REGISTER_NAME)                    \
-{                                                       \
-    if (strcmp(string, GET_NAME(REGISTER_NAME)) == 0)   \
-        return true;                                    \
-}
-
-static bool IsRegister(char* string)
-{
-    #include "registers.h"
-
-    // else
-    return false;    
-}
-#undef DEF_REGISTER_
-
-
-#define DEF_REGISTER_(REGISTER_NAME)                   \
-{                                                       \
-    if (strcmp(string, GET_NAME(REGISTER_NAME)) == 0)   \
-        return REGISTER_NAME;                           \
-}
-
-static registerName_t AToRegisterName(char* string)
-{
-    #include "registers.h"
-
-    // else
-    return REGISTER_NAME_WRONG;
-}
-#undef DEF_REGISTER_

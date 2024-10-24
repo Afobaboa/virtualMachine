@@ -104,9 +104,10 @@ VM_SOURCE_DIR=sources
 VM_HEADER_DIR=headers
 
 VM_SOURCE_FILES=processor.cpp assembler.cpp labelArray.cpp machineCode.cpp fileProcessor.cpp $\
-				RAM.cpp videoMemory.cpp
+				RAM.cpp videoMemory.cpp register64.cpp
 VM_HEADER_FILES=virtualMachine.h processor.h assembler.h labelArray.h machineCode.h $\
-				fileProcessor.h RAM.h videoMemory.h
+				fileProcessor.h RAM.h videoMemory.h register64.h $\
+				commands.h registers.h
 
 VM_SOURCES=$(patsubst %.cpp,$(VM_SOURCE_DIR)/%.cpp,$(VM_SOURCE_FILES))
 VM_HEADERS=$(patsubst %.h,$(VM_HEADER_DIR)/%.h,$(VM_HEADER_FILES))

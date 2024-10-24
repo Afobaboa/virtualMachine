@@ -35,9 +35,6 @@ static void ProcessorDelete(Processor* processor);
 static bool InstructionExecute(Processor* processor);
 
 
-static instruction_t RegisterGetValue(Processor* processor, registerName_t registerName);
-
-
 //--------------------------------------------------------------------------------------------------
 
 
@@ -107,20 +104,3 @@ static bool InstructionExecute(Processor* processor)
     return true;
 }
 #undef DEF_CMD_
-
-
-#define DEF_REGISTER_(REGISTER_NAME) \
-{\
-    if (registerName == REGISTER_NAME)\
-        return processor->registers.REGISTER_NAME;\
-}
-
-static instruction_t RegisterGetValue(Processor* processor, registerName_t registerName)
-{
-    #include "registers.h"
-
-    // else
-    ColoredPrintf(RED, "WRONG REGISTER NAME\n");
-    return 0;
-}
-#undef DEF_REGISTER_
