@@ -1,88 +1,112 @@
-///////////////
-// PUSH, POP //
-///////////////
+                             ///////////////
+/////////////////////////////// PUSH, POP //////////////////////////////////////////////////////////
+                             ///////////////
 
-#define SET_PUSH_POP_(CMD_NAME)                                                          \
-    char argBuffer[MAX_CMD_LENGTH + 1] = {};                                        \
-    instruction_t argv[4] = {};\
-    size_t argCount = 0;\
-    \
-    PushPopMode pushPopMode = {};\
-    MachineCodeAddInstruction(&assembler->machineCode, (instruction_t) CMD_NAME);   \
-    if (GetNextWord(assembler, argBuffer) != CMD_OK)\
-        return CMD_WRONG;\
-    if (strcmp(argBuffer, "[") == 0) \
-    {\
-        pushPopMode.isRAM = 1;\
-        if (GetNextWord(assembler, argBuffer) != CMD_OK)\
-            return CMD_WRONG;\
-        if (IsRegister(argBuffer))\
-        {\
-            pushPopMode.isRegister = 1;\
-            argv[argCount++] = (instruction_t) AToRegisterName(argBuffer);\
-            SkipSpaces(assembler);\
-            if (assembler->assemblyCode[0] == '+')\
-            {\
-                assembler->assemblyCode++;\
-                if (GetNextWord(assembler, argBuffer) != CMD_OK)\
-                    return CMD_WRONG;\
-                \
-                instruction_t nextInstruction = 0;\
-                if (!ConvertToInstruction(argBuffer, &nextInstruction))\
-                    return CMD_WRONG;\
-                pushPopMode.isConst = 1;\
-                argv[argCount++] = nextInstruction;\
-            }\
-        }\
-        else \
-        {\
-            instruction_t nextInstruction = 0;\
-            if (!ConvertToInstruction(argBuffer, &nextInstruction))\
-                return CMD_WRONG;\
-            pushPopMode.isConst = 1;\
-            argv[argCount++] = nextInstruction;\
-        }\
-    }\
-    else \
-    {\
-        if (IsRegister(argBuffer))\
-        {\
-            pushPopMode.isRegister = 1;\
-            argv[argCount++] = (instruction_t) AToRegisterName(argBuffer);\
-            SkipSpaces(assembler);\
-            if (assembler->assemblyCode[0] == '+')\
-            {\
-                assembler->assemblyCode++;\
-                if (GetNextWord(assembler, argBuffer) != CMD_OK)\
-                    return CMD_WRONG;\
-                \
-                instruction_t nextInstruction = 0;\
-                if (!ConvertToInstruction(argBuffer, &nextInstruction))\
-                    return CMD_WRONG;\
-                pushPopMode.isConst = 1;\
-                argv[argCount++] = nextInstruction;\
-            }\
-        }\
-        else \
-        {\
-            instruction_t nextInstruction = 0;\
-            if (!ConvertToInstruction(argBuffer, &nextInstruction))\
-                return CMD_WRONG;\
-            pushPopMode.isConst = 1;\
-            argv[argCount++] = nextInstruction;\
-        }\
-    }\
-    \
-    MachineCodeAddInstruction(&assembler->machineCode, *((instruction_t*) &pushPopMode));\
-    for (size_t argNum = 0; argNum < argCount; argNum++)\
-    {\
-        MachineCodeAddInstruction(&assembler->machineCode, argv[argNum]);\
-    }\
+#define PROCESS_IF_REGISTER_()                      \
+    if (IsRegister(argBuffer))                      \
+    {                                               \
+        pushPopMode.isRegister = true;              \
+        argv[argc++] = AToRegisterName(argBuffer);  \
+    }
 
+#define PROCESS_IF_CONST_()                                 \
+    if (ConvertToInstruction(argBuffer, &nextInstruction))  \
+    {                                                       \
+        pushPopMode.isConst = true;                         \
+        argv[argc++] = nextInstruction;                     \
+    }
+
+#define PROCESS_ARG_()                  \
+{                                       \
+    instruction_t nextInstruction = 0;  \
+                                        \
+    PROCESS_IF_REGISTER_                \
+    else                                \
+        PROCESS_IF_CONST_               \
+    else                                \
+        return CMD_WRONG;               \
+}
+
+#define DO_IF_PLUS_(CODE)                   \
+{                                           \
+    SkipSpaces(assembler);                  \
+    if (assembler->assemblyCode[0] == '+')  \
+    {                                       \
+        assembler->assemblyCode++;          \
+        CODE;                               \
+    }                                       \
+}
+
+#define GET_NEXT_WORD_()                    \
+{                                           \
+    if (!GetNextWord(assembler, argBuffer)) \
+        return CMD_WRONG;                   \
+}
+
+
+#define PROCESS_PUSH_POP_WITHOUT_RAM_() \
+{                                       \
+    PROCESS_ARG_();                     \
+    DO_IF_PLUS_(                        \
+    {                                   \
+        GET_NEXT_WORD_();               \
+        PROCESS_ARG_();                 \
+    })                                  \
+}
+
+
+#define PROCESS_PUSH_POP_WITH_RAM_TEMPLATE_()       \
+{                                                   \
+    if (argBuffer[strlen(argBuffer) - 1] == ']')    \
+    {                                               \
+        argBuffer[strlen(argBuffer) - 1] = '\0';    \
+    }                                               \
+    PROCESS_ARG_();                                 \
+}
+
+#define PROCESS_PUSH_POP_WITH_RAM_()            \
+{                                               \
+    pushPopMode.isRam = true;                   \
+    PROCESS_PUSH_POP_WITH_RAM_TEMPLATE_();      \
+    DO_IF_PLUS_(                                \
+    {                                           \
+        GET_NEXT_WORD_();                       \
+        PROCESS_PUSH_POP_WITH_RAM_TEMPLATE_();  \
+    })                                          \
+}
+
+#define SET_PUSH_POP_(CMD_NAME, pushPopMode)                                                \
+{                                                                                           \
+    char argBuffer[MAX_CMD_LENGTH + 1] = {};                                                \
+    instruction_t argv[4] = {};                                                             \
+    size_t argc = 0;                                                                        \
+                                                                                            \
+    MachineCodeAddInstruction(&assembler->machineCode, (instruction_t) CMD_NAME);           \
+                                                                                            \
+    GET_NEXT_WORD_();                                                                       \
+    if (argBuffer[0] == '[')                                                                \
+    {                                                                                       \
+        PROCESS_PUSH_POP_WITH_RAM_();                                                       \
+    }                                                                                       \
+    else                                                                                    \
+    {                                                                                       \
+        PROCESS_PUSH_POP_WITHOUT_RAM_();                                                    \
+    }                                                                                       \
+                                                                                            \
+    MachineCodeAddInstruction(&assembler->machineCode, *((instruction_t*) &pushPopMode));   \
+    for (size_t argNum = 0; argNum < argc; argNum++)                                        \
+        MachineCodeAddInstruction(&assembler->machineCode, argv[argNum]);                   \
+}
+
+
+//////////
+// PUSH //
+//////////
 
 DEF_CMD_(PUSH, 
 {
-    SET_PUSH_POP_(PUSH);
+    PushPopMode pushMode = {};
+    SET_PUSH_POP_(PUSH, pushMode);
     return CMD_OK;
 },
 {
@@ -117,10 +141,15 @@ DEF_CMD_(PUSH,
 })
 
 
+/////////
+// POP //
+/////////
+
 DEF_CMD_(POP,
 {
-    SET_PUSH_POP_(POP);
-    if (!pushPopMode.isRAM && pushPopMode.isConst)
+    PushPopMode popMode = {};
+    SET_PUSH_POP_(POP, popMode);
+    if (!popMode.isRAM && popMode.isConst)
         return CMD_WRONG;
     
     return CMD_OK;
@@ -166,15 +195,26 @@ DEF_CMD_(POP,
         }
     }
 })
+
+#undef DO_IF_PLUS_
+#undef PROCESS_ARG_
+#undef PROCESS_IF_CONST_
+#undef PROCESS_IF_REGISTER_
+
+#undef GET_NEXT_WORD_
+
+#undef PROCESS_PUSH_POP_WITH_RAM_
+#undef PROCESS_PUSH_POP_WITHOUT_RAM_
+
 #undef SET_PUSH_POP_
 
 
 
-/////////////////////////
-// ADD, SUB, MUL, DIV, //
-// IN, OUT,            //
-// DRAW                //
-/////////////////////////
+                                /////////////////////////
+                                // ADD, SUB, MUL, DIV, //
+////////////////////////////////// IN, OUT,            /////////////////////////////////////////////
+                                // DRAW                //
+                                /////////////////////////
 
 #define SET_CMD_NO_ARGS_(CMD_NAME)                                                  \
 {                                                                                   \
@@ -235,9 +275,9 @@ DEF_CMD_(DRAW, SET_CMD_NO_ARGS_(DRAW),
 
 
 
-////////////////////////////////////
-// JMP, JA, JAE, JB, JBE, JE, JNE //
-////////////////////////////////////
+                            ////////////////////////////////////
+////////////////////////////// JMP, JA, JAE, JB, JBE, JE, JNE //////////////////////////////////////
+                            ////////////////////////////////////
 
 #define SET_JUMP_(JUMP_NAME)                                        \
 {                                                                   \
