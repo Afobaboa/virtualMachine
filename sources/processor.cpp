@@ -15,13 +15,14 @@
 
 
 typedef uint64_t register64_t;
+#define DEF_REGISTER_(registerName) \
+    register64_t registerName;
+
 struct Registers64
 {
-    register64_t RAX;
-    register64_t RBX;
-    register64_t RCX;
-    register64_t RDX;
+    #include "registers.h"
 };
+#undef DEF_REGISTER_
 
 
 struct Processor
@@ -206,7 +207,7 @@ static void DoPOP(Processor* processor)
     if (popMode.isRAM)
     {
         size_t cellNum = 0;
-        if (popMode.isRAM)
+        if (popMode.isRegister)
         {
             MachineCodeGetNextInstruction(&processor->machineCode, &nextInstruction);
             cellNum += RegisterGetValue(processor, (registerName_t) nextInstruction);
@@ -218,8 +219,9 @@ static void DoPOP(Processor* processor)
             cellNum += nextInstruction;
         }
 
+        STACK_DUMP(processor->stack);
         instruction_t value = 0;
-        if (!StackPop(processor->stack, &value))
+        if (StackPop(processor->stack, &value) != OK)
             ColoredPrintf(RED, "CAN'T POP!!!\n");  
 
         RamCellSet(&processor->ram, cellNum, value);
@@ -334,7 +336,7 @@ static void DoJNE(Processor* processor) { JUMP_IF(!=); }
 #undef JUMP_IF
 
 
-#define REGISTER_GET_VALUE_CASE(REGISTER_NAME) \
+#define DEF_REGISTER_(REGISTER_NAME) \
 {\
     if (registerName == REGISTER_NAME)\
         return processor->registers.REGISTER_NAME;\
@@ -343,15 +345,13 @@ static void DoJNE(Processor* processor) { JUMP_IF(!=); }
 
 static instruction_t RegisterGetValue(Processor* processor, registerName_t registerName)
 {
-    REGISTER_GET_VALUE_CASE(RAX);
-    REGISTER_GET_VALUE_CASE(RBX);
-    REGISTER_GET_VALUE_CASE(RCX);
-    REGISTER_GET_VALUE_CASE(RDX);
+    #include "registers.h"
 
+    // else
     ColoredPrintf(RED, "WRONG REGISTER NAME\n");
     return 0;
 }
-#undef REGISTER_GET_VALUE_CASE
+#undef DEF_REGISTER_
 
 
 #define CONVERT_TO_REGISTER_CASE(REGISTER_NAME)         \

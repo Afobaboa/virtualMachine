@@ -126,7 +126,6 @@ bool Assemble(const char* fileName)
 
     AssembleCmds(&assembler);
     bool assemblingResult = AssembleCmds(&assembler);
-    LABEL_ARRAY_DUMP(&assembler.labelArray);
 
     char* assembledFileName = NULL;
     if (!FileNameChangeExtension((char*) fileName, &assembledFileName, ".asm",
@@ -446,13 +445,11 @@ static cmdStatus_t CmdNextGetAndWrite(Assembler* assembler)
             SkipSpaces(assembler);\
             if (assembler->assemblyCode[0] == '+')\
             {\
-                ColoredPrintf(YELLOW, "Debug\n");\
                 assembler->assemblyCode++;\
                 if (GetNextWord(assembler, argBuffer) != CMD_OK)\
                     return CMD_WRONG;\
                 \
                 instruction_t nextInstruction = 0;\
-                ColoredPrintf(YELLOW, "<%s>\n", argBuffer);\
                 if (!ConvertToInstruction(argBuffer, &nextInstruction))\
                     return CMD_WRONG;\
                 pushPopMode.isConst = 1;\
@@ -558,7 +555,7 @@ static cmdStatus_t SetJNE(Assembler* assembler) { SET_JUMP(JNE); }
 #undef SET_JUMP
 
 
-#define IS_REGISTER_CASE(REGISTER_NAME)                 \
+#define DEF_REGISTER_(REGISTER_NAME)                    \
 {                                                       \
     if (strcmp(string, GET_NAME(REGISTER_NAME)) == 0)   \
         return true;                                    \
@@ -566,17 +563,15 @@ static cmdStatus_t SetJNE(Assembler* assembler) { SET_JUMP(JNE); }
 
 static bool IsRegister(char* string)
 {
-    IS_REGISTER_CASE(RAX);
-    IS_REGISTER_CASE(RBX);
-    IS_REGISTER_CASE(RCX);
-    IS_REGISTER_CASE(RDX);
+    #include "registers.h"
 
+    // else
     return false;    
 }
-#undef IS_REGISTER_CASE
+#undef DEF_REGISTER_
 
 
-#define CONVERT_TO_REGISTER_CASE(REGISTER_NAME)         \
+#define DEF_REGISTERS_(REGISTER_NAME)                   \
 {                                                       \
     if (strcmp(string, GET_NAME(REGISTER_NAME)) == 0)   \
         return REGISTER_NAME;                           \
@@ -584,10 +579,9 @@ static bool IsRegister(char* string)
 
 static registerName_t AToRegisterName(char* string)
 {
-    CONVERT_TO_REGISTER_CASE(RAX);
-    CONVERT_TO_REGISTER_CASE(RBX);
-    CONVERT_TO_REGISTER_CASE(RCX);
+    #include "registers.h"
 
-    return RDX;
+    // else
+    return (registerName_t) (-1);
 }
-#undef CONVERT_TO_REGISTER_CASE
+#undef DEF_REGISTERS_
