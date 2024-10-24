@@ -14,17 +14,6 @@
 //--------------------------------------------------------------------------------------------------
 
 
-typedef uint64_t register64_t;
-#define DEF_REGISTER_(registerName) \
-    register64_t registerName;
-
-struct Registers64
-{
-    #include "registers.h"
-};
-#undef DEF_REGISTER_
-
-
 struct Processor
 {
     MachineCode machineCode;

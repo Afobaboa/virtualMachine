@@ -6,6 +6,7 @@
 
 
 #include "machineCode.h"
+#include "register64.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -34,18 +35,6 @@ typedef enum COMMAND_NAMES cmdName_t;
 #undef DEF_CMD_
 
 const size_t MAX_CMD_LENGTH = 32;
-
-
-#define DEF_REGISTER_(registerName) \
-    , registerName
-
-enum REGISTER_NAMES
-{
-    REGISTER_NAME_WRONG
-    #include "registers.h"
-};
-typedef enum REGISTER_NAMES registerName_t;
-#undef DEF_REGISTER_
 
 
 //--------------------------------------------------------------------------------------------------

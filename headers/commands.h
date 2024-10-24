@@ -145,7 +145,6 @@ DEF_CMD_(POP,
             cellNum += nextInstruction;
         }
 
-        STACK_DUMP(processor->stack);
         instruction_t value = 0;
         if (StackPop(processor->stack, &value) != OK)
             ColoredPrintf(RED, "CAN'T POP!!!\n");  

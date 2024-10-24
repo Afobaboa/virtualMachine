@@ -11,10 +11,6 @@
 //--------------------------------------------------------------------------------------------------
 
 
-#define GET_POSITION(x, y) \
-    (Position) {x, y}
-
-
 const size_t VERTICAL_SIZE   = 7;
 const size_t HORIZONTAL_SIZE = VERTICAL_SIZE * 2;
 
@@ -42,6 +38,9 @@ struct Position
     size_t x;
     size_t y;
 };
+
+#define GET_POSITION(x, y) \
+    (Position) {x, y}
 
 
 struct VideoMemory
