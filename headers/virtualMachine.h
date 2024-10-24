@@ -22,42 +22,30 @@ struct PushPopMode
 //--------------------------------------------------------------------------------------------------
 
 
-/**
- * Codes of virtual machine's commands.
- */
+#define DEF_CMD_(cmdName, ...) \
+    , cmdName
+
 enum COMMAND_NAMES
 {
-    PUSH = 1,         /**< Push elem to stack. */
-    POP,
-    ADD,
-    SUB,
-    DIV,
-    MUL,
-    IN,
-    OUT,
-    JMP,
-    JA,
-    JAE,
-    JB,
-    JBE,
-    JE,
-    JNE,
-    DRAW,
-    WRONG
+    CMD_NAME_WRONG
+    #include "commands.h"
 };
 typedef enum COMMAND_NAMES cmdName_t;
+#undef DEF_CMD_
 
 const size_t MAX_CMD_LENGTH = 32;
 
 
+#define DEF_REGISTER_(registerName) \
+    , registerName
+
 enum REGISTER_NAMES
 {
-    RAX,
-    RBX,
-    RCX, 
-    RDX
+    REGISTER_NAME_WRONG
+    #include "registers.h"
 };
 typedef enum REGISTER_NAMES registerName_t;
+#undef DEF_REGISTER_
 
 
 //--------------------------------------------------------------------------------------------------

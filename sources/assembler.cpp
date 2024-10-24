@@ -75,28 +75,6 @@ static void AssemblerCodeRewind(Assembler* assembler);
 static void AssemblerDelete(Assembler* assembler);
 
 
-static cmdStatus_t SetPUSH(Assembler* assembler);
-static cmdStatus_t SetPOP(Assembler* assembler);
-
-static cmdStatus_t SetADD(Assembler* assembler);
-static cmdStatus_t SetSUB(Assembler* assembler);
-static cmdStatus_t SetMUL(Assembler* assembler);
-static cmdStatus_t SetDIV(Assembler* assembler);
-
-static cmdStatus_t SetIN(Assembler* assembler);
-static cmdStatus_t SetOUT(Assembler* assembler);
-
-static cmdStatus_t SetDRAW(Assembler* assembler);
-
-static cmdStatus_t SetJMP(Assembler* assembler);
-static cmdStatus_t SetJA(Assembler* assembler);
-static cmdStatus_t SetJAE(Assembler* assembler);
-static cmdStatus_t SetJB(Assembler* assembler);
-static cmdStatus_t SetJBE(Assembler* assembler);
-static cmdStatus_t SetJE(Assembler* assembler);
-static cmdStatus_t SetJNE(Assembler* assembler);
-
-
 static bool IsRegister(char* string);
 static registerName_t AToRegisterName(char* string);
 
@@ -367,10 +345,12 @@ static cmdStatus_t JumpGetAndWriteAddress(Assembler* assembler)
 }
 
 
-#define CMD_SET_CASE(CMD_NAME)                      \
+#define DEF_CMD_(CMD_NAME, CMD_SET, ...)            \
 {                                                   \
     if (strcmp(cmdName, GET_NAME(CMD_NAME)) == 0)   \
-        return Set##CMD_NAME(assembler);            \
+    {                                               \
+        CMD_SET;                                    \
+    }                                               \
 }
 
 
@@ -396,163 +376,14 @@ static cmdStatus_t CmdNextGetAndWrite(Assembler* assembler)
         return CMD_LABEL;
     }
 
-    CMD_SET_CASE(PUSH);
-    CMD_SET_CASE(POP);
+    #include "commands.h"
 
-    CMD_SET_CASE(ADD);
-    CMD_SET_CASE(SUB);
-    CMD_SET_CASE(DIV);    
-    CMD_SET_CASE(MUL);
-
-    CMD_SET_CASE(OUT);
-    CMD_SET_CASE(IN);
-
-    CMD_SET_CASE(DRAW);
-
-    CMD_SET_CASE(JMP);
-    CMD_SET_CASE(JA);
-    CMD_SET_CASE(JAE);
-    CMD_SET_CASE(JB);
-    CMD_SET_CASE(JBE);
-    CMD_SET_CASE(JE);
-    CMD_SET_CASE(JNE);
-
+    //else
     ColoredPrintf(RED, "Error in line %zu: command %s doesn't exist.\n", 
                         assembler->lineNum, cmdName);
     return CMD_WRONG;
 }
-#undef CMD_SET_CASE
-
-
-#define CMD_SET_PUSH_POP_CASE(CMD_NAME)                                                          \
-    char argBuffer[MAX_CMD_LENGTH + 1] = {};                                        \
-    instruction_t argv[4] = {};\
-    size_t argCount = 0;\
-    \
-    PushPopMode pushPopMode = {};\
-    MachineCodeAddInstruction(&assembler->machineCode, (instruction_t) CMD_NAME);   \
-    if (GetNextWord(assembler, argBuffer) != CMD_OK)\
-        return CMD_WRONG;\
-    if (strcmp(argBuffer, "[") == 0) \
-    {\
-        pushPopMode.isRAM = 1;\
-        if (GetNextWord(assembler, argBuffer) != CMD_OK)\
-            return CMD_WRONG;\
-        if (IsRegister(argBuffer))\
-        {\
-            pushPopMode.isRegister = 1;\
-            argv[argCount++] = (instruction_t) AToRegisterName(argBuffer);\
-            SkipSpaces(assembler);\
-            if (assembler->assemblyCode[0] == '+')\
-            {\
-                assembler->assemblyCode++;\
-                if (GetNextWord(assembler, argBuffer) != CMD_OK)\
-                    return CMD_WRONG;\
-                \
-                instruction_t nextInstruction = 0;\
-                if (!ConvertToInstruction(argBuffer, &nextInstruction))\
-                    return CMD_WRONG;\
-                pushPopMode.isConst = 1;\
-                argv[argCount++] = nextInstruction;\
-            }\
-        }\
-        else \
-        {\
-            instruction_t nextInstruction = 0;\
-            if (!ConvertToInstruction(argBuffer, &nextInstruction))\
-                return CMD_WRONG;\
-            pushPopMode.isConst = 1;\
-            argv[argCount++] = nextInstruction;\
-        }\
-    }\
-    else \
-    {\
-        if (IsRegister(argBuffer))\
-        {\
-            pushPopMode.isRegister = 1;\
-            argv[argCount++] = (instruction_t) AToRegisterName(argBuffer);\
-            SkipSpaces(assembler);\
-            if (assembler->assemblyCode[0] == '+')\
-            {\
-                assembler->assemblyCode++;\
-                if (GetNextWord(assembler, argBuffer) != CMD_OK)\
-                    return CMD_WRONG;\
-                \
-                instruction_t nextInstruction = 0;\
-                if (!ConvertToInstruction(argBuffer, &nextInstruction))\
-                    return CMD_WRONG;\
-                pushPopMode.isConst = 1;\
-                argv[argCount++] = nextInstruction;\
-            }\
-        }\
-        else \
-        {\
-            instruction_t nextInstruction = 0;\
-            if (!ConvertToInstruction(argBuffer, &nextInstruction))\
-                return CMD_WRONG;\
-            pushPopMode.isConst = 1;\
-            argv[argCount++] = nextInstruction;\
-        }\
-    }\
-    \
-    MachineCodeAddInstruction(&assembler->machineCode, *((instruction_t*) &pushPopMode));\
-    for (size_t argNum = 0; argNum < argCount; argNum++)\
-    {\
-        MachineCodeAddInstruction(&assembler->machineCode, argv[argNum]);\
-    }
-
-
-static cmdStatus_t SetPUSH(Assembler* assembler) 
-{ 
-    CMD_SET_PUSH_POP_CASE(PUSH); 
-    return CMD_OK;
-}
-
-
-static cmdStatus_t SetPOP(Assembler* assembler) 
-{
-    CMD_SET_PUSH_POP_CASE(POP);
-    if (!pushPopMode.isRAM && pushPopMode.isConst)
-        return CMD_WRONG;
-    
-    return CMD_OK;
-}
-#undef CMD_SET_PUSH_POP_CASE
-
-
-#define CMD_SET_NO_ARGS(CMD_NAME)                                                   \
-{                                                                                   \
-    MachineCodeAddInstruction(&assembler->machineCode, (instruction_t) CMD_NAME);   \
-    SkipSpaces(assembler);                                                          \
-    SkipComments(assembler);                                                        \
-    return CMD_OK;                                                                  \
-}
-
-
-static cmdStatus_t SetSUB(Assembler* assembler)  { CMD_SET_NO_ARGS(SUB);  }
-static cmdStatus_t SetMUL(Assembler* assembler)  { CMD_SET_NO_ARGS(MUL);  }
-static cmdStatus_t SetDIV(Assembler* assembler)  { CMD_SET_NO_ARGS(DIV);  }
-static cmdStatus_t SetADD(Assembler* assembler)  { CMD_SET_NO_ARGS(ADD);  }
-static cmdStatus_t SetIN(Assembler* assembler)   { CMD_SET_NO_ARGS(IN);   }
-static cmdStatus_t SetOUT(Assembler* assembler)  { CMD_SET_NO_ARGS(OUT);  }
-static cmdStatus_t SetDRAW(Assembler* assembler) { CMD_SET_NO_ARGS(DRAW); }
-#undef CMD_SET_NO_ARGS
-
-
-#define SET_JUMP(JUMP_NAME)                                         \
-{                                                                   \
-    MachineCodeAddInstruction(&assembler->machineCode, JUMP_NAME);  \
-    return JumpGetAndWriteAddress(assembler);                       \
-}
-
-static cmdStatus_t SetJMP(Assembler* assembler) { SET_JUMP(JMP); }
-static cmdStatus_t SetJA(Assembler* assembler)  { SET_JUMP(JA);  }
-static cmdStatus_t SetJAE(Assembler* assembler) { SET_JUMP(JAE); }
-static cmdStatus_t SetJB(Assembler* assembler)  { SET_JUMP(JB);  }
-static cmdStatus_t SetJBE(Assembler* assembler) { SET_JUMP(JBE); }
-static cmdStatus_t SetJE(Assembler* assembler)  { SET_JUMP(JE);  }
-static cmdStatus_t SetJNE(Assembler* assembler) { SET_JUMP(JNE); }
-#undef SET_JUMP
+#undef DEF_CMD_
 
 
 #define DEF_REGISTER_(REGISTER_NAME)                    \
@@ -571,7 +402,7 @@ static bool IsRegister(char* string)
 #undef DEF_REGISTER_
 
 
-#define DEF_REGISTERS_(REGISTER_NAME)                   \
+#define DEF_REGISTER_(REGISTER_NAME)                   \
 {                                                       \
     if (strcmp(string, GET_NAME(REGISTER_NAME)) == 0)   \
         return REGISTER_NAME;                           \
@@ -582,6 +413,6 @@ static registerName_t AToRegisterName(char* string)
     #include "registers.h"
 
     // else
-    return (registerName_t) (-1);
+    return REGISTER_NAME_WRONG;
 }
-#undef DEF_REGISTERS_
+#undef DEF_REGISTER_
