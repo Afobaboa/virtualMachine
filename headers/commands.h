@@ -218,7 +218,8 @@ DEF_CMD_(POP,
 
                                 /////////////////////////
                                 // ADD, SUB, MUL, DIV, //
-////////////////////////////////// IN, OUT,            /////////////////////////////////////////////
+////////////////////////////////// SQRT, SIN, COS,     /////////////////////////////////////////////
+                                // IN, OUT,            //
                                 // DRAW,               //
                                 // RET                 //
                                 /////////////////////////
@@ -257,6 +258,29 @@ DEF_CMD_(SUB,  SET_CMD_NO_ARGS_(SUB), DO_OPERATION_(-))
 DEF_CMD_(MUL,  SET_CMD_NO_ARGS_(MUL), DO_OPERATION_(*))
 DEF_CMD_(DIV,  SET_CMD_NO_ARGS_(DIV), DO_OPERATION_(/))
 #undef DO_OPERATION_
+
+
+#define DO_FUNCTION_(Function)                                              \
+{                                                                           \
+    instruction_t arg = 0;                                                  \
+    if (StackPop(processor->stack, &arg)  != OK)                            \
+    {                                                                       \
+        ColoredPrintf(RED, "%s: POP ERROR\n", __FUNCTION__);                \
+        return false;                                                       \
+    }                                                                       \
+    instruction_t result = (instruction_t) round(Function((double) arg));   \
+    StackPush(processor->stack, &result);                                   \
+}
+
+
+////////////////////
+// SQRT, SIN, COS //
+////////////////////
+
+DEF_CMD_(SQRT, SET_CMD_NO_ARGS_(SQRT), DO_FUNCTION_(sqrt))
+DEF_CMD_(SIN,  SET_CMD_NO_ARGS_(SIN),  DO_FUNCTION_(sin))
+DEF_CMD_(COS,  SET_CMD_NO_ARGS_(COS),  DO_FUNCTION_(cos))
+#undef DO_FUNCTION_
 
 
 ////////
