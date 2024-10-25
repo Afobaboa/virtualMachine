@@ -138,10 +138,12 @@ DEF_CMD_(PUSH,
     {
         instruction_t value;
         RamGetValue(&processor->ram, result, &value);
+        // ColoredPrintf(GREEN, "ram: push result = %zu, ram[result] = %zu\n", result, value);
         StackPush(processor->stack, &value);
     }
     else 
     {
+        // ColoredPrintf(GREEN, "push result = %zu\n", result);
         StackPush(processor->stack, &result);
     }
 })
@@ -163,6 +165,10 @@ DEF_CMD_(POP,
 {
     PushPopMode popMode = {};
     MachineCodeGetNextInstruction(&processor->machineCode, (instruction_t*) &popMode);
+
+    instruction_t value = 0;
+    if (StackPop(processor->stack, &value) != OK)
+        ColoredPrintf(RED, "CAN'T POP!!!\n");  
     
     instruction_t nextInstruction = 0;
     if (popMode.isRAM)
@@ -180,11 +186,11 @@ DEF_CMD_(POP,
             cellNum += nextInstruction;
         }
 
-        instruction_t value = 0;
-        if (StackPop(processor->stack, &value) != OK)
-            ColoredPrintf(RED, "CAN'T POP!!!\n");  
-
+        // ColoredPrintf(GREEN, "cellNum = %zu, value = %zu\n", cellNum, value);
         RamCellSet(&processor->ram, cellNum, value);
+        // instruction_t newValue = 0;
+        // RamGetValue(&processor->ram, cellNum, &newValue);
+        // ColoredPrintf(RED, "newValue = %zu\n", newValue);
     }
 
     else 
@@ -193,12 +199,11 @@ DEF_CMD_(POP,
         {
             instruction_t registerName = 0;
             MachineCodeGetNextInstruction(&processor->machineCode, &registerName);
-
-            instruction_t value = 0;
-            StackPop(processor->stack, &value);
             
             *((register64_t*) &processor->registers + registerName - RAX) = value;
         }
+        else 
+            ColoredPrintf(RED, "WRONG POP ARGS\n");
     }
 })
 
@@ -244,7 +249,7 @@ DEF_CMD_(POP,
         return false;                                                   \
     }                                                                   \
                                                                         \
-    instruction_t result = firstPoppedElem operation secondPoppedElem;  \
+    instruction_t result = secondPoppedElem operation firstPoppedElem;  \
     StackPush(processor->stack, &result);                               \
 }
 

@@ -324,7 +324,7 @@ static cmdStatus_t JumpGetAndWriteAddress(Assembler* assembler)
         LOG_PRINT(ERROR, "LabelName = <%s>\n", labelName);
         return CMD_WRONG;
     }
-    LABEL_ARRAY_DUMP(&assembler->labelArray);
+    // LABEL_ARRAY_DUMP(&assembler->labelArray);
 
     size_t instructionNum = LABEL_POISON_NUM;
     LabelFind(&assembler->labelArray, labelName, &instructionNum);

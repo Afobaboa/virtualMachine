@@ -11,7 +11,7 @@
 
 //--------------------------------------------------------------------------------------------------
 
-const size_t RAM_CAPACITY = 512;
+const size_t RAM_CAPACITY = 1024;
 
 
 typedef uint64_t memoryCell_t;
