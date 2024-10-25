@@ -18,6 +18,7 @@ struct Processor
 {
     MachineCode machineCode;
     Stack* stack;
+    Stack* callStack;
     Registers64 registers;
     RAM ram;
 };
@@ -65,7 +66,8 @@ static void ProcessorInit(Processor* processor, const char* programName)
 {
     MachineCodeInitFromFile(&(processor->machineCode), (char*) programName);
     processor->registers = {};
-    STACK_CREATE(processor->stack, sizeof(instruction_t));
+    STACK_CREATE(processor->stack,     sizeof(instruction_t));
+    STACK_CREATE(processor->callStack, sizeof(instruction_t));
     RamInit(&processor->ram);
 }
 
@@ -74,7 +76,8 @@ static void ProcessorDelete(Processor* processor)
 {
     processor->registers = {};
     MachineCodeDelete(&(processor->machineCode));
-    StackDelete(&(processor->stack));
+    StackDelete(&processor->stack);
+    StackDelete(&processor->callStack);
     RamDelete(&processor->ram);
 }
 

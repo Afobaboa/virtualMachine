@@ -219,7 +219,8 @@ DEF_CMD_(POP,
                                 /////////////////////////
                                 // ADD, SUB, MUL, DIV, //
 ////////////////////////////////// IN, OUT,            /////////////////////////////////////////////
-                                // DRAW                //
+                                // DRAW,               //
+                                // RET                 //
                                 /////////////////////////
 
 #define SET_CMD_NO_ARGS_(CMD_NAME)                                                  \
@@ -246,11 +247,21 @@ DEF_CMD_(POP,
     StackPush(processor->stack, &result);                               \
 }
 
+
+////////////////////////
+// ADD, SUB, MUL, DIV //
+//////////////////////// 
+
 DEF_CMD_(ADD,  SET_CMD_NO_ARGS_(ADD), DO_OPERATION_(+))
 DEF_CMD_(SUB,  SET_CMD_NO_ARGS_(SUB), DO_OPERATION_(-))
 DEF_CMD_(MUL,  SET_CMD_NO_ARGS_(MUL), DO_OPERATION_(*))
 DEF_CMD_(DIV,  SET_CMD_NO_ARGS_(DIV), DO_OPERATION_(/))
 #undef DO_OPERATION_
+
+
+////////
+// IN //
+////////
 
 DEF_CMD_(IN, SET_CMD_NO_ARGS_(IN),
 {
@@ -260,6 +271,11 @@ DEF_CMD_(IN, SET_CMD_NO_ARGS_(IN),
 
     StackPush(processor->stack, &inputNum);
 })
+
+
+/////////
+// OUT //
+/////////
 
 DEF_CMD_(OUT, SET_CMD_NO_ARGS_(OUT),
 {
@@ -273,17 +289,34 @@ DEF_CMD_(OUT, SET_CMD_NO_ARGS_(OUT),
     ColoredPrintf(YELLOW, "%d\n", lastElem);
 })
 
+
+//////////
+// DRAW //
+//////////
+
 DEF_CMD_(DRAW, SET_CMD_NO_ARGS_(DRAW),
 {
     RamScreenDraw(&processor->ram);
 })
+
+
+/////////
+// RET //
+/////////
+
+DEF_CMD_(RET, SET_CMD_NO_ARGS_(RET),
+{
+    instruction_t instructionNum = 0;
+    StackPop(processor->callStack, &instructionNum);
+    MachineCodeJump(&processor->machineCode, JUMP_ABSOLUTE, (int64_t) instructionNum);
+})
 #undef SET_CMD_NO_ARGS_
 
 
-
-                            ////////////////////////////////////
-////////////////////////////// JMP, JA, JAE, JB, JBE, JE, JNE //////////////////////////////////////
-                            ////////////////////////////////////
+                            /////////////////////////////////////
+////////////////////////////// JMP, JA, JAE, JB, JBE, JE, JNE, /////////////////////////////////////
+                            // CALL                            //
+                            /////////////////////////////////////
 
 #define SET_JUMP_(JUMP_NAME)                                        \
 {                                                                   \
@@ -321,6 +354,11 @@ DEF_CMD_(DRAW, SET_CMD_NO_ARGS_(DRAW),
     StackPush(processor->stack, &lastInstruction);              \
 }
 
+
+////////////////////////////////////
+// JMP, JA, JAE, JB, JBE, JE, JNE //
+////////////////////////////////////
+
 DEF_CMD_(JMP, SET_JUMP_(JMP), DO_JUMP_())
 DEF_CMD_(JA,  SET_JUMP_(JA),  DO_JUMP_IF_(>))
 DEF_CMD_(JAE, SET_JUMP_(JAE), DO_JUMP_IF_(>=))
@@ -328,6 +366,18 @@ DEF_CMD_(JB,  SET_JUMP_(JB),  DO_JUMP_IF_(<))
 DEF_CMD_(JBE, SET_JUMP_(JBE), DO_JUMP_IF_(<=))
 DEF_CMD_(JE,  SET_JUMP_(JE),  DO_JUMP_IF_(==))
 DEF_CMD_(JNE, SET_JUMP_(JNE), DO_JUMP_IF_(!=))
+
+
+//////////
+// CALL //
+//////////
+
+DEF_CMD_(CALL, SET_JUMP_(CALL),
+{
+    instruction_t thisInstructionEnd = MachineCodeGetInstructionNum(&processor->machineCode) + 1;
+    StackPush(processor->callStack, &thisInstructionEnd);
+    DO_JUMP_();
+})
 
 #undef SET_JUMP_
 #undef DO_JUMP_IF_
