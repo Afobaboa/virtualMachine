@@ -12,9 +12,9 @@
 //--------------------------------------------------------------------------------------------------
 
 
-typedef uint64_t instruction_t;
+typedef int64_t instruction_t;
 
- struct MachineCode
+struct MachineCode
  {
     size_t instructionCount;
     size_t instructionNum;

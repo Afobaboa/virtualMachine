@@ -24,7 +24,10 @@
     else                                            \
         PROCESS_IF_CONST_(pushPopMode, argBuffer)   \
     else                                            \
+    {                                               \
+        LOG_PRINT(ERROR, "Wrong pushPop args.\n");  \
         return CMD_WRONG;                           \
+    }                                               \
 }
 
 #define DO_IF_PLUS_(CODE)                   \
@@ -137,7 +140,7 @@ DEF_CMD_(PUSH,
     if (pushMode.isRAM)
     {
         instruction_t value;
-        RamGetValue(&processor->ram, result, &value);
+        RamGetValue(&processor->ram, (size_t) result, &value);
         // ColoredPrintf(GREEN, "ram: push result = %zu, ram[result] = %zu\n", result, value);
         StackPush(processor->stack, &value);
     }
@@ -158,7 +161,10 @@ DEF_CMD_(POP,
     PushPopMode popMode = {};
     SET_PUSH_POP_(POP, popMode);
     if (!popMode.isRAM && popMode.isConst)
+    {
+        LOG_PRINT(ERROR, "Wrong pop format.\n");
         return CMD_WRONG;
+    }
     
     return CMD_OK;
 },
@@ -177,13 +183,14 @@ DEF_CMD_(POP,
         if (popMode.isRegister)
         {
             MachineCodeGetNextInstruction(&processor->machineCode, &nextInstruction);
-            cellNum += RegisterGetValue(&processor->registers, (registerName_t) nextInstruction);
+            cellNum += (size_t) RegisterGetValue(&processor->registers, 
+                                                 (registerName_t) nextInstruction);
         }
 
         if (popMode.isConst)
         {
             MachineCodeGetNextInstruction(&processor->machineCode, &nextInstruction);
-            cellNum += nextInstruction;
+            cellNum += (size_t) nextInstruction;
         }
 
         // ColoredPrintf(GREEN, "cellNum = %zu, value = %zu\n", cellNum, value);
@@ -295,7 +302,7 @@ DEF_CMD_(COS,  SET_CMD_NO_ARGS_(COS),  DO_FUNCTION_(cos))
 DEF_CMD_(IN, SET_CMD_NO_ARGS_(IN),
 {
     instruction_t inputNum = 0;
-    if (scanf("%zu", &inputNum) <= 0)
+    if (scanf("%ld", &inputNum) <= 0)
         return false;
 
     StackPush(processor->stack, &inputNum);
@@ -337,7 +344,7 @@ DEF_CMD_(RET, SET_CMD_NO_ARGS_(RET),
 {
     instruction_t instructionNum = 0;
     StackPop(processor->callStack, &instructionNum);
-    MachineCodeJump(&processor->machineCode, JUMP_ABSOLUTE, (int64_t) instructionNum);
+    MachineCodeJump(&processor->machineCode, JUMP_ABSOLUTE, instructionNum);
 })
 #undef SET_CMD_NO_ARGS_
 
@@ -353,11 +360,11 @@ DEF_CMD_(RET, SET_CMD_NO_ARGS_(RET),
     return JumpGetAndWriteAddress(assembler);                       \
 }
 
-#define DO_JUMP_()                                                                          \
-{                                                                                           \
-    instruction_t instructionNum = 0;                                                       \
-    MachineCodeGetNextInstruction(&(processor->machineCode), &instructionNum);              \
-    MachineCodeJump(&(processor->machineCode), JUMP_ABSOLUTE, (int64_t) instructionNum);    \
+#define DO_JUMP_()                                                              \
+{                                                                               \
+    instruction_t instructionNum = 0;                                           \
+    MachineCodeGetNextInstruction(&(processor->machineCode), &instructionNum);  \
+    MachineCodeJump(&(processor->machineCode), JUMP_ABSOLUTE, instructionNum);  \
 }
 
 #define DO_JUMP_IF_(CONDITION)                                  \
@@ -403,7 +410,8 @@ DEF_CMD_(JNE, SET_JUMP_(JNE), DO_JUMP_IF_(!=))
 
 DEF_CMD_(CALL, SET_JUMP_(CALL),
 {
-    instruction_t thisInstructionEnd = MachineCodeGetInstructionNum(&processor->machineCode) + 1;
+    instruction_t thisInstructionEnd = (instruction_t)
+                                         MachineCodeGetInstructionNum(&processor->machineCode) + 1;
     StackPush(processor->callStack, &thisInstructionEnd);
     DO_JUMP_();
 })

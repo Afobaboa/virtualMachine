@@ -14,7 +14,7 @@
 const size_t RAM_CAPACITY = 1024;
 
 
-typedef uint64_t memoryCell_t;
+typedef int64_t memoryCell_t;
 struct RAM 
 {
     memoryCell_t* memory;

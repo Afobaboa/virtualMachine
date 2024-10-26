@@ -10,14 +10,14 @@ int main()
 {
     LOG_OPEN();
 
-    if (!Assemble("test.asm"))
+    if (!Assemble("circle.asm"))
     {
         ColoredPrintf(RED, "Assembling failed\n");
         LOG_CLOSE();
         return 1;
     }
 
-    if (!ExecuteProgram("test.vm"))
+    if (!ExecuteProgram("circle.vm"))
         ColoredPrintf(RED, "Executing failed\n");
 
     LOG_CLOSE();

@@ -289,28 +289,41 @@ static void SkipComments(Assembler* assembler)
 
 static bool ConvertToInstruction(char* string, instruction_t* valueBuffer)
 {
-    instruction_t value = 0;
-    const size_t digitCount = strlen(string);
-
+    // ColoredPrintf(YELLOW, "next instruction = <%s>\n", string);
     if (strlen(string) == 3 && string[0] == '\'' && string[0] == string[2])
     {
         *valueBuffer = string[1];
         return true;
     }
 
+    instruction_t value = 0;
+    instruction_t sign  = 1;
+    if (string[0] == '-')
+    {
+        sign = -1;
+        string++;
+    }
+
+    const size_t digitCount = strlen(string);
     for(size_t digitNum = 0; digitNum < digitCount; digitNum++)
     {
         char nextDigit = string[digitNum];
         if (!isdigit(nextDigit))
+        {
+            LOG_PRINT(INFO, "string = <%s>, sign = %ld", string, sign);
             return false;
-        
+        }
+
         if (digitCount > 1 && digitNum == 0 && nextDigit == '0')
+        {
+            LOG_PRINT(INFO, "string = <%s>, sign = %ld", string, sign);
             return false;
+        }
 
         value = value*10 + (instruction_t) (nextDigit - '0');
     }
 
-    *valueBuffer = value;
+    *valueBuffer = value * sign;
     return true;
 }
 
@@ -330,12 +343,12 @@ static cmdStatus_t JumpGetAndWriteAddress(Assembler* assembler)
     LabelFind(&assembler->labelArray, labelName, &instructionNum);
     if (instructionNum == LABEL_POISON_NUM)
     {
-        MachineCodeAddInstruction(&assembler->machineCode, LABEL_POISON_NUM);
+        MachineCodeAddInstruction(&assembler->machineCode, (instruction_t) LABEL_POISON_NUM);
         LabelAdd(&assembler->labelArray, labelName, LABEL_DUMMY_NUM);
         return CMD_LABEL;
     }
 
-    MachineCodeAddInstruction(&assembler->machineCode, instructionNum);
+    MachineCodeAddInstruction(&assembler->machineCode, (instruction_t) instructionNum);
     
     return CMD_OK;
 }
